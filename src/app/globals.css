@@ -1,8 +1,67 @@
 @import "tailwindcss";
+@import "./styles/desktop-layout.css";
 
 :root {
   --background: #ffffff;
+  --white: #f9f9f9;
+  --white-100: #f4f4f4;
+
   --foreground: #171717;
+  --black: #2a2727;
+
+  --violet-50: #e8e4ff;
+  --violet-100: #c6baff;
+  --violet-200: #8d76fe;
+  --violet: #7b61ff;
+
+  --rose: #ff6b81;
+  --rose-100: #ff8092;
+
+  --skyblue: #a6e3e9;
+
+  --gray-100: #f0f0f0;
+  --gray-200: #d0d0d0;
+  --gray-300: #9f9f9f;
+  --gray-400: #7c7874;
+
+  --success: #23d691;
+
+  /* Colores adicionales sugeridos */
+  --yellow-100: #fef3c7;
+  --yellow-500: #f59e0b;
+  --green-50: #ecfdf5;
+  --green-100: #d1fae5;
+  --green-400: #34d399;
+  --green-800: #065f46;
+  --red: #fef6f6;
+  --red-50: #fef2f2;
+  --red-100: #fee2e2;
+  --red-400: #f87171;
+  --red-800: #991b1b;
+
+  /* ✅ Success */
+  --success-50: #ecfdf5;
+  --success-100: #d1fae5;
+  --success-400: #34d399;
+  --success-800: #065f46;
+
+  /* ❌ Error */
+  --error-50: #fef2f2;
+  --error-100: #fee2e2;
+  --error-400: #f87171;
+  --error: #d41818;
+
+  /* ⚠️ Warning */
+  --warning-50: #fffbea;
+  --warning-100: #fef3c7;
+  --warning-400: #fbbf24;
+  --warning-800: #92400e;
+
+  /* ℹ️ Info */
+  --info-50: #eff6ff;
+  --info-100: #dbeafe;
+  --info-400: #60a5fa;
+  --info-800: #1e40af;
 }
 
 @theme inline {
@@ -20,7 +79,620 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--white);
+  color: var(--white);
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slideIn {
+  animation: slideIn 0.3s ease forwards;
+}
+
+.page-transition-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.page-transition {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Mejora la fluidez de las transiciones en general */
+* {
+  backface-visibility: hidden;
+}
+
+/* Efecto de presión para los botones */
+.nav-button-press {
+  transition: transform 0.2s ease;
+}
+
+.nav-button-press:active {
+  transform: scale(0.95);
+}
+
+/* Este CSS debe ir en tus estilos globales o en un módulo CSS */
+
+/* Configuración para animaciones 3D */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+/* Keyframes para la rotación */
+@keyframes flipToFront {
+  0% {
+    transform: rotateY(180deg);
+    opacity: 0;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes flipToBack {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 0;
+  }
+  100% {
+    transform: rotateY(180deg);
+    opacity: 1;
+  }
+}
+
+/* Clases para la rotación */
+.rotate-y-0 {
+  transform: rotateY(0deg);
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Efecto de presión al hacer clic */
+.card-press {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.card-press:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* Asegúrate de que los botones sean fáciles de hacer clic */
+.card-button {
+  position: relative;
+  z-index: 20;
+  padding: 10px;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.card-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.card-button:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Scrollbar minimalista */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(128, 128, 128, 0.3); /* gris suave */
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(128, 128, 128, 0.6);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+}
+
+@keyframes shimmer {
+  0% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+  100% {
+    opacity: 0.8;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Efecto de aparición para el modal */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-enter {
+  animation: modalFadeIn 0.3s ease-out forwards;
+}
+
+/* Efecto de desaparición para el modal */
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+}
+
+.modal-exit {
+  animation: modalFadeOut 0.2s ease-in forwards;
+}
+
+/* Efecto de aparición para los elementos dentro del modal */
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.content-enter {
+  animation: contentFadeIn 0.4s ease-out forwards;
+}
+
+/* Efecto de holograma para el código del cupón */
+@keyframes hologram {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.hologram-effect {
+  background: linear-gradient(
+    90deg,
+    var(--violet-600) 0%,
+    var(--violet-500) 25%,
+    var(--violet-600) 50%,
+    var(--violet-500) 75%,
+    var(--violet-600) 100%
+  );
+  background-size: 200% 100%;
+  animation: hologram 3s infinite;
+}
+
+@layer utilities {
+  .animate-slide-in-left {
+    animation: slideInLeft 0.3s ease-out forwards;
+  }
+
+  .animate-slide-out-left {
+    animation: slideOutLeft 0.3s ease-in forwards;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(100%); /* ⬅️ Entra desde la derecha */
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0%);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideOutLeft {
+    from {
+      transform: translateX(0%);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%); /* ➡️ Sale hacia la derecha */
+      opacity: 0;
+    }
+  }
+}
+
+/* Añade estos estilos a tu archivo global.css */
+
+/* Animación para el semicírculo de puntos */
+@keyframes bounce-in {
+  0% {
+    transform: translateY(-60px) translateX(-50%);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(5px) translateX(-50%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) translateX(-50%);
+    opacity: 1;
+  }
+}
+
+.points-container {
+  animation: bounce-in 0.7s ease-out forwards;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-bottom-left-radius: 9999px;
+  border-bottom-right-radius: 9999px;
+}
+
+/* Transición suave para el contenido cuando se empuja hacia abajo */
+.hero-content {
+  transition: padding-top 0.4s ease-out;
+}
+
+/* Efecto de brillo para los puntos */
+.points-glow {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Efecto de onda en el semicírculo */
+.wave-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.wave-effect::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--violet-200) 0%,
+    var(--violet-300) 25%,
+    var(--violet-200) 50%,
+    var(--violet-300) 75%,
+    var(--violet-200) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 0 0 9999px 9999px;
+  animation: wave 3s linear infinite;
+}
+
+@keyframes wave {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/* Animaciones personalizadas */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes float-delayed {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(123, 97, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(123, 97, 255, 0.6);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Clases de animación */
+.animate-fade-in-up {
+  animation: fade-in-up 1s ease-out;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 8s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background: linear-gradient(
+    -45deg,
+    var(--violet),
+    var(--rose),
+    var(--violet-200),
+    var(--violet)
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+/* Efectos de hover mejorados */
+.hover-lift {
+  transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Efectos de texto */
+.text-gradient {
+  background: linear-gradient(135deg, var(--violet), var(--rose));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Botones mejorados */
+.btn-primary {
+  background: linear-gradient(135deg, var(--violet), var(--rose));
+  border: none;
+  border-radius: 50px;
+  padding: 12px 32px;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(123, 97, 255, 0.3);
+}
+
+/* Cards con efecto glassmorphism */
+.glass-card {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+/* Efectos de scroll reveal */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: all 0.6s ease;
+}
+
+.scroll-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Estilo para enlaces de navegación */
+.nav-link {
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -5px;
+  left: 50%;
+  background: var(--violet);
+  transition: all 0.3s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+  left: 0;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .animate-fade-in-up {
+    animation-delay: 0.2s;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+    line-height: 1.2;
+  }
+
+  .section-padding {
+    padding: 3rem 1rem;
+  }
+}
+
+/* Dark mode support (opcional para futuro) */
+@media (prefers-color-scheme: dark) {
+  .glass-card {
+    background: rgba(123, 97, 255, 0.1);
+    border: 1px solid rgba(123, 97, 255, 0.2);
+  }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--violet);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--violet-200);
+}
+
+/* Efectos de loading (para futuras implementaciones) */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

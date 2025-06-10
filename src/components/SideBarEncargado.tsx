@@ -1,0 +1,221 @@
+"use client";
+
+import React, { useState } from 'react';
+import {
+    LayoutDashboard,
+    Users,
+    ShoppingBag,
+    Gift,
+    Settings,
+    LogOut,
+    ChefHat,
+    BarChart3,
+    ChevronLeft,
+    ChevronRight,
+    Star,
+    MapPin,
+} from 'lucide-react';
+import MenuItem from './MenItem';
+import { useRouter } from 'next/navigation';
+import { useSidebar } from '@/context/SideBarContext';
+
+const ManagerSidebar = () => {
+    const router = useRouter();
+    const [activeItem, setActiveItem] = useState('dashboard');
+    const { isExpanded, toggleSidebar } = useSidebar();
+
+    const managerData = {
+        name: "Carlos Martínez",
+        restaurant: {
+            name: "La Parrilla del Chef",
+            logo: "🍽️",
+            address: "Av. Corrientes 1234, CABA",
+            rating: 4.8,
+            category: "Parrilla Argentina"
+        },
+        stats: {
+            clientesAdheridos: 247,
+            ventasHoy: 15,
+            canjesPendientes: 3,
+            puntosOtorgados: 12450
+        }
+    };
+
+    const menuItems = [
+        {
+            id: 'dashboard',
+            label: 'Dashboard',
+            icon: <LayoutDashboard size={22} />,
+            description: 'Vista general del restaurante'
+        },
+        {
+            id: 'clientes',
+            label: 'Clientes',
+            icon: <Users size={22} />,
+            description: 'Gestión de clientes adheridos',
+            badge: managerData.stats.clientesAdheridos
+        },
+        {
+            id: 'productos',
+            label: 'Productos',
+            icon: <ChefHat size={22} />,
+            description: 'Gestión del menú y productos'
+        },
+        {
+            id: 'ventas',
+            label: 'Ventas',
+            icon: <ShoppingBag size={22} />,
+            description: 'Registro de compras y ventas',
+            badge: managerData.stats.ventasHoy
+        },
+        {
+            id: 'canjes',
+            label: 'Canjes',
+            icon: <Gift size={22} />,
+            description: 'Confirmar canjes de puntos',
+            badge: managerData.stats.canjesPendientes,
+            badgeColor: 'bg-[var(--rose)]'
+        },
+        {
+            id: 'reportes',
+            label: 'Reportes',
+            icon: <BarChart3 size={22} />,
+            description: 'Análisis y estadísticas'
+        },
+        {
+            id: 'configuracion',
+            label: 'Configuración',
+            icon: <Settings size={22} />,
+            description: 'Ajustes del restaurante'
+        }
+    ];
+
+    const goToPage = (id: string) => () => {
+        router.push(`/res/${id}`);
+    }
+
+    return (
+        <aside className={`${isExpanded ? 'w-80' : 'w-20'} fixed top-0 left-0 z-9900 h-screen bg-[var(--violet)] border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 overflow-y-auto`}>
+
+            {/* Header del Restaurante */}
+            <div className={`${isExpanded ? 'p-6' : 'p-3'} border-b border-white/20`}>
+                {isExpanded ? (
+                    // Vista expandida
+                    <>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl shadow-md backdrop-blur-sm flex-shrink-0">
+                                {managerData.restaurant.logo}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                                <p className="text-white/80 text-sm">Panel de</p>
+                                <h2 className="text-white text-xl font-bold truncate">
+                                    {managerData.restaurant.name}
+                                </h2>
+                                <div className="flex items-center space-x-1 text-sm text-white/60">
+                                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                                    <span>{managerData.restaurant.rating}</span>
+                                    <span>•</span>
+                                    <span>{managerData.restaurant.category}</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={toggleSidebar}
+                                className="p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors flex-shrink-0"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Info del encargado y acciones rápidas */}
+                        <div className="space-y-3">
+                            <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
+                                <div className="flex items-center space-x-2 text-sm text-white/80 mb-2">
+                                    <MapPin className="w-4 h-4" />
+                                    <span className="truncate">{managerData.restaurant.address}</span>
+                                </div>
+                                <div className="text-xs text-white/60">
+                                    Encargado: <span className="font-medium text-white">{managerData.name}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-white text-sm hover:bg-white/20 transition-all duration-200 backdrop-blur-sm border border-white/10">
+                                    <Settings size={16} />
+                                    Configurar
+                                </button>
+                                <button className="flex items-center gap-2 px-3 py-2 bg-red-500/20 rounded-lg text-white text-sm hover:bg-red-500/30 transition-all duration-200 backdrop-blur-sm border border-red-300/20">
+                                    <LogOut size={16} />
+                                    Salir
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    // Vista minimizada
+                    <div className="flex flex-col items-center space-y-3">
+                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-lg shadow-md backdrop-blur-sm">
+                            {managerData.restaurant.logo}
+                        </div>
+                        
+                        <button
+                            onClick={toggleSidebar}
+                            className="p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors w-10 h-10 flex items-center justify-center"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Stats rápidas */}
+            {isExpanded && (
+                <div className="p-6 border-b border-white/20">
+                    <div className="bg-gradient-to-r from-white/10 to-white/20 rounded-xl p-4 backdrop-blur-sm border border-white/20">
+                        <h4 className="text-white text-2xl font-bold text-center">
+                            {managerData.stats.puntosOtorgados.toLocaleString()} puntos
+                        </h4>
+                        <p className="text-white/80 text-sm mt-1 text-center">
+                            otorgados hoy
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="bg-white/10 p-3 rounded-lg text-white backdrop-blur-sm border border-white/10">
+                            <div className="text-xs opacity-80">Clientes</div>
+                            <div className="text-lg font-bold">{managerData.stats.clientesAdheridos}</div>
+                        </div>
+                        <div className="bg-white/10 p-3 rounded-lg text-white backdrop-blur-sm border border-white/10">
+                            <div className="text-xs opacity-80">Ventas Hoy</div>
+                            <div className="text-lg font-bold">{managerData.stats.ventasHoy}</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Navegación principal */}
+            <nav className={`flex-1 ${isExpanded ? 'p-6' : 'p-3'}`}>
+                {isExpanded && (
+                    <h2 className="text-white/70 text-xs uppercase tracking-wider font-semibold mb-4">
+                        Panel de Control
+                    </h2>
+                )}
+                <ul className="space-y-2">
+                    {menuItems.map((item) => (
+                        <li key={item.id} onClick={goToPage(item.id)}>
+                            <MenuItem
+                                item={item}
+                                isActive={activeItem === item.id}
+                                onClick={setActiveItem}
+                                isExpanded={isExpanded}
+                            />
+                        </li>
+                    ))}
+                </ul>
+            </nav>
+        </aside>
+    );
+};
+
+export default ManagerSidebar;
