@@ -8,11 +8,10 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;
     error?: string;
     helpText?: string;
-    labelColor?: "default" | "light"; // Nueva prop para controlar el color del label
 }
 
 const variantStyles = {
-    default: "bg-[var(--violet-50)] focus-within:ring-[var(--violet-200)] border-transparent",
+    default: "bg-[var(--violet-50)] focus-within:ring-[var(--violet-200)] border-[var(--violet-200)] hover:border-[var(--violet)] transition-all duration-200",
     error: "bg-[var(--violet-50)] focus-within:ring-red-300 border-red-500",
     success: "bg-[var(--violet-50)] focus-within:ring-green-300 border-green-500",
     outline: "bg-transparent focus-within:ring-[var(--violet-200)] border-[var(--violet-200)] hover:border-white transition-all duration-200",
@@ -20,7 +19,7 @@ const variantStyles = {
 
 const labelColorStyles = {
     default: "text-[var(--black)]",
-    light: "text-[var(--violet-100)]",
+    outline: "text-[var(--violet-100)]",
 };
 
 const inputTextStyles = {
@@ -42,7 +41,6 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
     label,
     error,
     helpText,
-    labelColor = "default",
     id,
     ...props
 }, ref) => {
@@ -53,17 +51,15 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
     const finalVariant = error ? "error" : variant;
     
     // Auto-detectar labelColor basado en variant
-    const finalLabelColor = variant === "outline" ? "light" : labelColor;
-
+    const finalLabelColor = variant === "outline" ? "outline" : "default";
+    
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (allowOnlyLetters && !/^[a-zA-ZáéíóúüÁÉÍÓÚÜñÑ\s\b]$/.test(e.key) && e.key.length === 1) {
             e.preventDefault();
         }
-
         if (allowOnlyNumbers && !/[0-9]/.test(e.key) && e.key.length === 1) {
             e.preventDefault();
         }
-
         if (props.onKeyDown) props.onKeyDown(e);
     };
 
@@ -79,13 +75,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
                 focus-within:ring-2 border 
                 ${variantStyles[finalVariant]} 
                 ${className}`}>
-
                 {icon && (
                     <div className={`w-5 h-5 mr-2 ${variant === 'outline' ? 'text-[var(--violet-200)]' : 'text-[var(--violet)]'}`}>
                         {icon}
                     </div>
                 )}
-
                 <input
                     ref={ref}
                     type={type}
@@ -93,7 +87,20 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
                     id={inputId}
                     placeholder={placeholder}
                     onKeyDown={handleKeyDown}
-                    className={`bg-transparent border-none outline-none text-lg font-semibold placeholder:font-normal w-full ml-2 ${inputTextStyles[finalVariant]}`}
+                    className={`bg-transparent border-none outline-none text-lg font-semibold placeholder:font-normal w-full ml-2 ${inputTextStyles[finalVariant]}
+                        autofill:bg-transparent autofill:shadow-[inset_0_0_0px_1000px_transparent] 
+                        autofill:[-webkit-text-fill-color:var(--violet)] 
+                        autofill:focus:bg-transparent autofill:focus:shadow-[inset_0_0_0px_1000px_transparent] 
+                        autofill:hover:bg-transparent autofill:hover:shadow-[inset_0_0_0px_1000px_transparent]
+                        [&:-webkit-autofill]:bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0px_1000px_transparent] 
+                        [&:-webkit-autofill]:[-webkit-text-fill-color:var(--violet)]
+                        [&:-webkit-autofill:focus]:bg-transparent [&:-webkit-autofill:focus]:shadow-[inset_0_0_0px_1000px_transparent]
+                        [&:-webkit-autofill:hover]:bg-transparent [&:-webkit-autofill:hover]:shadow-[inset_0_0_0px_1000px_transparent]`}
+                    style={{
+                        // Fallback para navegadores que no soportan las clases CSS
+                        WebkitBoxShadow: variant === 'outline' ? 'inset 0 0 0px 1000px transparent' : undefined,
+                        WebkitTextFillColor: variant === 'outline' ? 'white' : 'var(--violet)',
+                    }}
                     {...props}
                 />
             </div>

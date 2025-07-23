@@ -1,12 +1,11 @@
 import { useState } from "react";
 import Button from "@/components/ui/buttons/Button";
 import { PlusCircle } from "lucide-react";
-import { useRestaurantStore } from "@/stores/restaurantStore";
-import { useTarjetaStore } from "@/stores/useTarjetaStore";
-import { addTajerta } from "@/api/tarjetasFetch";
-import { useClienteStore } from "@/stores/useClienteCompleto";
+import { useRestaurantStore } from "@/stores/useRestaurantStore";
 import SpinnerLoader from "@/components/ui/SpinerLoader";
 import toast from "react-hot-toast";
+import { useTarjetas } from "@/hooks/useTarjetas";
+import { useSucursalesCliente } from "@/hooks/useSucursales"; // 🔄 AGREGAR ESTE HOOK
 
 interface Props {
     handleClose: () => void;
@@ -14,69 +13,92 @@ interface Props {
 
 export default function ModalAgregarRestBody({ handleClose }: Props) {
     const [loading, setLoading] = useState(false);
+    
+    const { createTarjeta, getTarjetaBySucursal } = useTarjetas();
+    const { refresh: refreshSucursalesCliente } = useSucursalesCliente(); // 🔄 PARA ACTUALIZAR SUCURSALES
 
-    const idRestaurante = useRestaurantStore((state) => state.idRestaurantDelete);
-    const clearIdRestaurantDelete = useRestaurantStore((state) => state.clearIdRestaurantDelete);
+    const idRestaurantSelected = useRestaurantStore((state) => state.idRestaurantSelected);
+    const clearIdRestaurantSelected = useRestaurantStore((state) => state.clearIdRestaurantSelected);
 
-    const tarjetas = useTarjetaStore((state) => state.tarjetas);
-    const actualizarTarjetas = useTarjetaStore((state) => state.fetchTarjetasByCliente);
+    const sucId = idRestaurantSelected?.suc_id;
+    const negId = idRestaurantSelected?.neg_id;
 
-    const cliente = useClienteStore((state) => state.cliente);
-
-    const yaExiste = tarjetas.some((t) => t.res_id === idRestaurante);
-
+    const tarjetaExistente = sucId ? getTarjetaBySucursal(sucId) : null;
+    
     const handleConfirm = async () => {
-        if (!cliente || !idRestaurante) {
-            console.error("Falta cliente o Negocio");
-            return null;
+        if (!sucId || !negId) {
+            toast.error("Faltan datos para agregar el negocio");
+            return;
         }
-        setLoading(true);
-        try {
-            if (yaExiste) {
-                toast.error("Este Negocio ya está agregado");
-                setLoading(false);
-                return;
-            }
 
-            const nuevaTarjeta = await addTajerta(+cliente.cli_id, +idRestaurante);
-            console.log("Negocio agregado:", nuevaTarjeta);
-            toast.success("Negocio agregado");
-            await actualizarTarjetas(+cliente.cli_id);
-            handleClose();
+        if (tarjetaExistente) {
+            toast.error("Este negocio ya está agregado a tu cuenta");
+            return;
+        }
+
+        setLoading(true);
+        
+        try {
+            await createTarjeta(+sucId, +negId);
+            console.log("✅ Negocio agregado:", sucId, negId);
+            
+            await refreshSucursalesCliente();
+            console.log("🔄 Sucursales del cliente actualizadas");
+            
+            toast.success("Comercio agregado con éxito");
+            
         } catch (error) {
-            console.error(error);
+            console.error("❌ Error al agregar negocio:", error);
             toast.error("Hubo un error al agregar el negocio");
-            setLoading(false);
         } finally {
             setLoading(false);
+            clearIdRestaurantSelected();
             handleClose();
         }
-    }; 
+    };
 
     const handleCancel = () => {
         if (loading) return;
-        clearIdRestaurantDelete();
+        clearIdRestaurantSelected();
         handleClose();
     };
 
     return (
         <div className="flex flex-col items-center text-center gap-4">
-            <div className="bg-[var(--white)] p-3 rounded-full">
-                <PlusCircle className="text-green-600 w-6 h-6" />
-            </div>
+            <PlusCircle className="text-[var(--violet)] w-10 h-8" />
             <h2 className="text-xl font-bold">¿Agregar negocio?</h2>
-            <p className="text-sm text-gray-500">
-                ¿Estás seguro de que querés agregar este negocio a tu cuenta?
-            </p>
+            
+            {sucId && negId && (
+                <p className="text-sm text-gray-500">
+                    ¿Estás seguro de que querés agregar este negocio a tu cuenta?
+                </p>
+            )}
+            
+            {tarjetaExistente && (
+                <p className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                    ⚠️ Este negocio ya está en tu cuenta
+                </p>
+            )}
+            
             <div className="flex gap-4 pt-4 w-full">
-                <Button variant="outline" className="w-full" onClick={handleCancel} disabled={loading}>
+                <Button 
+                    variant="danger" 
+                    className="w-full" 
+                    onClick={handleCancel} 
+                    disabled={loading}
+                >
                     Cancelar
                 </Button>
-                <Button variant="success" className="w-full" onClick={handleConfirm} disabled={loading}>
+                <Button 
+                    variant="primary" 
+                    className="w-full" 
+                    onClick={handleConfirm} 
+                    disabled={loading || !!tarjetaExistente}
+                >
                     {loading ? (
                         <SpinnerLoader />
                     ) : (
-                        "Agregar"
+                        tarjetaExistente ? "Ya agregado" : "Agregar"
                     )}
                 </Button>
             </div>

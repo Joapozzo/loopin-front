@@ -6,18 +6,22 @@ export function useAnimatedModal(isOpen: boolean, onClose: () => void) {
 
     useEffect(() => {
         if (isOpen) {
-            // Montamos el modal primero
             setIsMounted(true);
+            setIsClosing(false);
+        } else if (isMounted && !isClosing) {
+            // Iniciar animación de cierre cuando isOpen se vuelve false
+            setIsClosing(true);
+            setTimeout(() => {
+                setIsMounted(false);
+                setIsClosing(false);
+            }, 300);
         }
-    }, [isOpen]);
+    }, [isOpen, isMounted, isClosing]);
 
     const handleClose = () => {
-        setIsClosing(true);
-        setTimeout(() => {
-            setIsMounted(false);
-            setIsClosing(false);
-            onClose();
-        }, 300); // duración de la animación de salida
+        if (!isClosing) {
+            onClose(); // Esto hará que isOpen se vuelva false, activando el useEffect
+        }
     };
 
     return { isMounted, isClosing, handleClose };

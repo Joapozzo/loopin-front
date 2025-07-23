@@ -1,23 +1,27 @@
-import { Cliente } from "@/types/cliente";
-import { User } from "@/types/user";
-
-export interface ClienteCompleto extends Cliente, User { }
+// Estructura real que viene de la API
+export interface ClienteCompleto {
+    cli_id: number;
+    cli_nom: string;
+    cli_ape: string;
+    cli_fec_nac: string;
+    usu_cel: string;
+    usu_mail: string;
+    usu_dni: string;
+    usu_username: string;
+}
 
 export interface ClienteFormData {
     cli_nom: string;
     cli_ape: string;
-    cli_fecha_nac: string;
-    usu_mail: string;
-    usu_cel: string;
-    usu_dni: string;
-    usu_loc_id: number;
-    tip_id: number;
+    cli_fec_nac: string;
 }
 
 export interface ClienteEndpoints {
-    getAll: string;
-    getById: string;
-    create: string;
-    update: string;
-    delete: string;
+    getActivos: string;
+    getInactivos: string;
+}
+
+export interface ClienteApiResponse {
+    clientes: ClienteCompleto[];
+    mensaje: string;
 }

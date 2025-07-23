@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import { DM_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/AuthContext";
+import Providers from "./provider";
 
 export const metadata: Metadata = {
   title: "Loopin",
@@ -14,6 +15,19 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -22,12 +36,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${dmSans.variable} antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased font-sans`}
       >
-        <AuthProvider>
-          <Toaster />
-          {children}
-        </AuthProvider>
+        <Providers>
+          <AuthProvider>
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                style: { zIndex: 99999 }
+              }}
+            />
+            {children}
+          </AuthProvider>
+        </Providers>
       </body>
     </html>
   );

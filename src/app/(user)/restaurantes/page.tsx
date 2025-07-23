@@ -4,23 +4,46 @@ import HeroRest from "@/components/HeroRest";
 import DesktopLayout from "@/components/layouts/LayoutContent";
 import MobileLayout from "@/components/layouts/MobileLayout";
 import ModalConfirmation from "@/components/modals/ModalConfirmation";
-import ModalAgregarRestBody from "@/components/modals/templates/BodyAgregarRestaurante";
 import ModalConfirmationBody from "@/components/modals/templates/BodyEliminarRestaurante";
 import Section from "@/components/Section";
-import { useRestaurantUser } from "@/hooks/useRestaurantUser";
+import { useSucursalesCliente } from "@/hooks/useSucursales";
 import { useSearchStore } from "@/stores/useSearchStore";
-import { Restaurant } from "@/types/restaurant";
+import { Sucursal } from "@/types/sucursal";
+import Link from "next/link";
+import { useMemo } from "react";
 
 export default function Page() {
-    const { restaurantesUser, loading, error } = useRestaurantUser();
+    const { sucursales, loading, error } = useSucursalesCliente();
 
-    // filtros store
     const searchTerm = useSearchStore((s) => s.searchTerm);
+    const alphabeticalOrder = useSearchStore((s) => s.alphabeticalOrder);
 
-    const matchesSearch = (restaurant: Restaurant) =>
-        restaurant.res_nom.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const filteredRestaurantes = restaurantesUser.filter(matchesSearch);
+    const filteredRestaurantes = useMemo(() => {
+        let resultado = [...sucursales];
+        
+        // 🔍 1. Filtrar por término de búsqueda
+        if (searchTerm.trim()) {
+            resultado = resultado.filter((restaurant: Sucursal) =>
+                restaurant.suc_nom.toLowerCase().includes(searchTerm.toLowerCase().trim())
+            );
+        }
+        
+        // 🔤 2. Ordenar alfabéticamente si está activado
+        if (alphabeticalOrder !== 'none') {
+            resultado.sort((a, b) => {
+                const nameA = a.suc_nom.toLowerCase();
+                const nameB = b.suc_nom.toLowerCase();
+                
+                if (alphabeticalOrder === 'asc') {
+                    return nameA.localeCompare(nameB);
+                } else {
+                    return nameB.localeCompare(nameA);
+                }
+            });
+        }
+        
+        return resultado;
+    }, [sucursales, searchTerm, alphabeticalOrder]);
 
     if (loading) {
         return (
@@ -43,9 +66,9 @@ export default function Page() {
     }
 
     return (
-        <DesktopLayout>
+        <>
             {/* HeroRest full width */}
-            <HeroRest title="Mis Restaurantes" />
+            <HeroRest title="Mis Comercios" />
 
             {/* Contenido con padding solo en móvil */}
             <MobileLayout>
@@ -54,7 +77,7 @@ export default function Page() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 w-full">
                             {filteredRestaurantes.map((rest) => (
                                 <CardRest
-                                    key={rest.res_id}
+                                    key={rest.suc_id}
                                     restaurant={rest}
                                     selected
                                 />
@@ -62,7 +85,7 @@ export default function Page() {
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <div className="bg-gray-50 rounded-full p-6 mb-4">
+                            <div className="bg-gray-50 rounded-full p-6">
                                 <svg
                                     className="w-12 h-12 text-gray-400"
                                     fill="none"
@@ -78,18 +101,18 @@ export default function Page() {
                                 </svg>
                             </div>
                             <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                                No hay restaurantes adheridos
+                                No hay comercios adheridos
                             </h3>
                             <p className="text-gray-500 text-sm max-w-md">
                                 {searchTerm
-                                    ? `No se encontraron restaurantes que coincidan con "${searchTerm}"`
-                                    : "No hay negocios adheridos a tu cuenta. Busca y adhiere restaurantes desde la sección 'Restaurantes'."
+                                    ? `No se encontraron comercios que coincidan con "${searchTerm}"`
+                                    : "No hay comercios adheridos a tu cuenta. Busca y adhiere restaurantes desde la sección 'Comercios'."
                                 }
                             </p>
                             {!searchTerm && (
-                                <button className="mt-4 px-6 py-2 bg-[var(--violet)] text-white rounded-lg hover:bg-[var(--violet-200)] transition-colors">
-                                    Explorar restaurantes
-                                </button>
+                                <Link className="mt-4 px-6 py-2 bg-[var(--violet)] text-white rounded-lg hover:bg-[var(--violet-200)] transition-colors" href={"/explorar"}>
+                                    Explorar comercios
+                                </Link>
                             )}
                         </div>
                     )}
@@ -102,6 +125,6 @@ export default function Page() {
                     <ModalConfirmationBody handleClose={handleClose} />
                 }
             </ModalConfirmation>
-        </DesktopLayout>
+        </>
     );
 }

@@ -5,28 +5,30 @@ import Link from "next/link";
 import { Home, User, Compass, Store, Ticket, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { useRestaurantStore } from '@/stores/restaurantStore';
-import { useClienteStore } from '@/stores/useClienteCompleto';
-import { useTarjetaStore } from '@/stores/useTarjetaStore';
+import { useRestaurantStore } from "@/stores/useRestaurantStore";
+import { useTarjetaStore } from "@/stores/useTarjetasStore";
+import { useUserSidebar } from "@/context/UserSideBarContext";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserSidebar } from "@/context/UserSideBarContext"; 
+import { useUserProfile } from "@/hooks/userProfile";
+import { useSucursales, useSucursalesCliente } from "@/hooks/useSucursales";
 
-const navItems = [
-    { href: "/home", icon: <Home size={22} />, label: "Home" },
-    { href: "/restaurantes", icon: <Store size={22} />, label: "Restaurantes" },
-    { href: "/explorar", icon: <Compass size={22} />, label: "Explorar" },
-    { href: "/perfil", icon: <User size={22} />, label: "Perfil" },
-];
 
 export default function Sidebar() {
     const { logout } = useAuth();
+
+    const { nombreCompleto } = useUserProfile();
+    const { isExpanded, toggleSidebar } = useUserSidebar();
+    const { totalSucursales: totalSucursalesCliente } = useSucursalesCliente();
+    const { totalSucursales } = useSucursales();
+
+
     const pathname = usePathname();
     const router = useRouter();
-    const cliente = useClienteStore((s) => s.cliente);
-    const restaurantSelected = useRestaurantStore((s) => s.getRestaurantSelected());
+
+    const restaurantSelected = useRestaurantStore((state) => state.idRestaurantSelected);
     const tarjetas = useTarjetaStore((s) => s.tarjetas);
-    const tarjeta = tarjetas?.find((t) => t?.res_id === restaurantSelected?.res_id);
-    const { isExpanded, toggleSidebar } = useUserSidebar();
+
+    const tarjeta = tarjetas?.find((t) => t?.suc_id === restaurantSelected?.suc_id);
 
     const [points, setPoints] = useState(0);
 
@@ -44,7 +46,7 @@ export default function Sidebar() {
                 }
                 setPoints(Math.floor(start));
             }, 16);
-            
+
             return () => clearInterval(interval);
         } else {
             setPoints(0);
@@ -58,6 +60,37 @@ export default function Sidebar() {
     const closeSesion = () => {
         logout();
     };
+
+    const navItems = [
+        {
+            href: "/home",
+            icon: <Home size={22} />,
+            label: "Home",
+            description: "Promociones y ofertas"
+        },
+        {
+            href: "/restaurantes",
+            icon: <Store size={22} />,
+            label: "Comercios",
+            description: "Tus comercios adheridos",
+            badge: totalSucursalesCliente,
+            badgeColor: "bg-[var(--rose)]"
+        },
+        {
+            href: "/explorar",
+            icon: <Compass size={22} />,
+            label: "Explorar",
+            description: "Descubrí lugares nuevos",
+            badge: totalSucursales,
+            badgeColor: "bg-[var(--rose)]"
+        },
+        {
+            href: "/perfil",
+            icon: <User size={22} />,
+            label: "Perfil",
+            description: "Configuración y datos"
+        },
+    ];
 
     return (
         <aside className={`${isExpanded ? 'w-80' : 'w-20'} fixed top-0 left-0 h-screen bg-[var(--violet)] border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300`}>
@@ -75,7 +108,7 @@ export default function Sidebar() {
                             <div className="flex-1 min-w-0">
                                 <p className="text-white/80 text-sm">¡Bienvenido</p>
                                 <h1 className="text-white text-xl font-bold truncate">
-                                    {cliente?.cli_nom}!
+                                    {nombreCompleto}!
                                 </h1>
                             </div>
                             <button
@@ -112,7 +145,7 @@ export default function Sidebar() {
                             alt="perfil del usuario"
                             className="w-10 h-10 rounded-full bg-white/20 p-1 shadow-md"
                         />
-                        
+
                         <button
                             onClick={toggleSidebar}
                             className="p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors w-10 h-10 flex items-center justify-center"
@@ -137,31 +170,45 @@ export default function Sidebar() {
                             <li key={item.href}>
                                 <Link
                                     href={item.href}
-                                    className={`flex items-center ${isExpanded ? 'gap-3 px-4' : 'justify-center px-2'} py-3 rounded-xl transition-all duration-200 group ${
-                                        isActive
+                                    className={`flex items-center ${isExpanded ? 'gap-3 px-4' : 'justify-center px-2'} py-3 rounded-xl transition-all duration-200 group relative ${isActive
                                             ? "bg-white text-[var(--violet)] shadow-lg"
                                             : "text-white/80 hover:bg-white/10 hover:text-white"
-                                    }`}
+                                        }`}
                                     title={!isExpanded ? item.label : undefined}
                                 >
-                                    <span className={`transition-all duration-200 ${
-                                        isActive ? "scale-110" : "group-hover:scale-105"
-                                    }`}>
+                                    <span className={`transition-all duration-200 ${isActive ? "scale-110" : "group-hover:scale-105"
+                                        }`}>
                                         {item.icon}
                                     </span>
-                                    
+
                                     {isExpanded && (
                                         <>
-                                            <span className="font-medium">{item.label}</span>
+                                            <div className="flex-1">
+                                                <div className="font-medium">{item.label}</div>
+                                                <div className={`text-xs ${isActive ? "text-[var(--violet)]/70" : "text-white/60"
+                                                    }`}>
+                                                    {item.description}
+                                                </div>
+                                            </div>
+
+                                            {item.badge && (
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${item.badgeColor || "bg-white/20"
+                                                    } ${isActive ? "text-white" : "text-white"}`}>
+                                                    {item.badge}
+                                                </span>
+                                            )}
+
                                             {isActive && (
                                                 <motion.div
-                                                    className="ml-auto w-2 h-2 bg-[var(--violet)] rounded-full"
+                                                    className="ml-2 w-2 h-2 bg-[var(--violet)] rounded-full"
                                                     layoutId="activeIndicator"
                                                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                                 />
                                             )}
                                         </>
                                     )}
+
+
                                 </Link>
                             </li>
                         );

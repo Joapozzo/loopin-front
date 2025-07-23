@@ -16,7 +16,6 @@ export default function MenuBottom() {
     const pathname = usePathname();
     const [mounted, setMounted] = useState(false);
 
-    // Prevent hydration mismatch
     useEffect(() => {
         setMounted(true);
     }, []);

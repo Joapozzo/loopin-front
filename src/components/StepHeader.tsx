@@ -1,5 +1,6 @@
 import React from "react";
 import { ProgressIndicator } from "./ProgressIndicator";
+import Image from "next/image";
 
 interface StepHeaderProps {
     title: string;
@@ -14,14 +15,14 @@ export function StepHeader({
     subtitle, 
     currentStep, 
     totalSteps,
-    logo = "/logos/logo-violet.svg"
+    logo = "/logos/logo.svg"
 }: StepHeaderProps) {
     return (
         <div className="text-center mb-6">
             <div className="mb-3">
-                <img src={logo} alt="Logo Loopin" className="h-8 w-auto mx-auto" />
+                <Image src={logo} alt="Logo Loopin" className="h-8 w-auto mx-auto" width={120} height={40} />
             </div>
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">Unite a Loopin</h2>
+            <h2 className="text-2xl font-semibold text-[var(--violet)] mb-2">Unite a Loopin</h2>
             <p className="text-base text-gray-600 mb-4">
                 {subtitle || "Completá tus datos para registrarte"}
             </p>

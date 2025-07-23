@@ -154,6 +154,6 @@ export const mockNotifications: NotificationItem[] = [
 ];
 
 export const mockChartData = {
-    ventas: [28, 32, 25, 38, 42, 35, 29], // Ventas por día de la semana
+    ventas: [15, 1509, 8, 28, 45, 1509, 19],
     labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 };

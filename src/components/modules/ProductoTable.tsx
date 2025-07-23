@@ -1,14 +1,16 @@
 "use client";
 import React, { useState } from 'react';
-import { DataTable } from '../table/DataTable'; 
+import { DataTable } from '../table/DataTable';
 import { TableFilters } from '../../components/table/TableFilters';
 import Button from '../../components/ui/buttons/Button';
 import { ConfirmDialog } from '../../components/modals/ConfirmDialog';
-import { useProductos, UseProductosConfig } from '../../hooks/useProductos';
+import { useProductos, UseProductosConfig, ProductoUpdateData } from '../../hooks/useProductos';
 import { Product, ProductoFormData } from '../../types/product';
-import { ProductoFormModalContainer } from '../modals/ProductFormModal'; 
-import { createProductoColumns } from '../ProductColumns'; 
+import { ProductoFormModalContainer } from '../modals/ProductFormModal';
+import { createProductoColumns } from '../ProductColumns';
 import ErrorMessage from '../ui/ErrorMessage';
+import { useCategorias } from '@/hooks/useCategoria';
+import { useComercioData } from '@/hooks/useComercioEncargado';
 
 interface ProductoTableProps extends UseProductosConfig {
     className?: string;
@@ -31,20 +33,28 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
         isCreating,
         isUpdating,
         isDeleting
-    } = useProductos(productosConfig);
+    } = useProductos({ mode: 'sucursal', ...productosConfig });
+
+    const { comercioData } = useComercioData();
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedProducto, setSelectedProducto] = useState<Product | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    const { categorias, isLoading } = useCategorias();
+
     const handleCreate = () => {
+        console.log('🆕 Iniciando creación de producto');
         setSelectedProducto(null);
+        setError(null);
         setIsFormModalOpen(true);
     };
 
     const handleEdit = (producto: Product) => {
+        console.log('✏️ Iniciando edición de producto:', producto);
         setSelectedProducto(producto);
+        setError(null);
         setIsFormModalOpen(true);
     };
 
@@ -52,19 +62,48 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
         setSelectedProducto(producto);
         setIsDeleteDialogOpen(true);
     };
-
-    const handleFormSubmit = async (data: ProductoFormData) => {
+    const handleFormSubmit = async (data: any) => {
         try {
             setError(null);
-            if (selectedProducto) {
-                await updateProducto(selectedProducto.pro_id, data);
-            } else {
+
+            if (!selectedProducto) {
                 await createProducto(data);
+
+            } else {
+                // PARA EDITAR: data tiene estructura { data: {...}, foto: ... }
+                console.log('Updating product with object:', data);
+
+                if (!data.data || !data.data.pro_nom || !data.data.pro_puntos_canje ||
+                    data.data.pro_cantidad_disp === undefined || !data.data.cat_tip_id ||
+                    !data.data.pro_tip_id || !data.data.pro_tyc) {
+                    throw new Error('Faltan campos obligatorios para la actualización');
+                }
+
+                const proActivo = data.data.pro_activo === 1 ? true : false;
+                const updateData: ProductoUpdateData = {
+                    data: {
+                        pro_nom: data.data.pro_nom,
+                        pro_puntos_canje: data.data.pro_puntos_canje,
+                        pro_cantidad_disp: data.data.pro_cantidad_disp,
+                        cat_tip_id: data.data.cat_tip_id,
+                        pro_tip_id: data.data.pro_tip_id,
+                        pro_tyc: data.data.pro_tyc,
+                        pro_activo: proActivo,
+                    },
+                    foto: data.foto
+                };
+
+                await updateProducto(selectedProducto.pro_id, updateData);
             }
+
             setIsFormModalOpen(false);
             setSelectedProducto(null);
+            console.log('✅ Operación completada exitosamente');
+
         } catch (error) {
-            setError(error instanceof Error ? error.message : 'Error desconocido');
+            console.error('❌ Error en handleFormSubmit:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            setError(errorMessage);
             throw error;
         }
     };
@@ -73,15 +112,21 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
         if (selectedProducto) {
             try {
                 setError(null);
+                console.log('🗑️ Eliminando producto:', selectedProducto.pro_id);
                 await deleteProducto(selectedProducto.pro_id);
                 setSelectedProducto(null);
+                setIsDeleteDialogOpen(false);
+                console.log('✅ Producto eliminado exitosamente');
             } catch (error) {
-                setError(error instanceof Error ? error.message : 'Error al eliminar producto');
+                const errorMessage = error instanceof Error ? error.message : 'Error al eliminar producto';
+                console.error('❌ Error eliminando producto:', errorMessage);
+                setError(errorMessage);
             }
         }
     };
 
     const handleCloseFormModal = () => {
+        console.log('🚪 Cerrando modal');
         setIsFormModalOpen(false);
         setSelectedProducto(null);
         setError(null);
@@ -93,8 +138,8 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
     };
 
     const columns = React.useMemo(
-        () => createProductoColumns(handleEdit, handleDelete),
-        []
+        () => createProductoColumns(handleEdit, handleDelete, categorias),
+        [handleEdit, handleDelete, categorias]
     );
 
     return (
@@ -108,7 +153,7 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
                                 Gestión de Productos
                             </h2>
                             <p className="text-sm text-[var(--violet-200)] mt-1">
-                                Administra el catálogo de productos
+                                Administra el catálogo de productos de tu sucursal
                             </p>
                         </div>
                         <Button onClick={handleCreate} className='flex items-center'>
@@ -144,7 +189,7 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
                 onPageSizeChange={setPageSize}
                 sorting={tableConfig.sorting}
                 onSortingChange={setSorting}
-                emptyMessage="No hay productos registrados"
+                emptyMessage="No hay productos registrados en esta sucursal"
                 className="rounded-t-none"
             />
 
@@ -171,6 +216,7 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
                 confirmText="Eliminar"
                 cancelText="Cancelar"
                 variant="danger"
+            // isLoading={isDeleting}
             />
         </div>
     );

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import Button from "@/components/ui/buttons/Button";
 import { AlertCircle } from "lucide-react";
-import { useRestaurantStore } from "@/stores/restaurantStore";
-import { useTarjetaStore } from "@/stores/useTarjetaStore";
+import { useRestaurantStore } from "@/stores/useRestaurantStore";
+import { useTarjetaStore } from "@/stores/useTarjetasStore";
 import { deleteTarjetaByUser } from "@/api/tarjetasFetch";
-import { useClienteStore } from "@/stores/useClienteCompleto";
+// import { useClienteStore } from "@/stores/useClienteCompleto";
 import SpinnerLoader from "@/components/ui/SpinerLoader";
 import toast from "react-hot-toast";
+import { useUserProfile } from "@/hooks/userProfile";
 
 interface Props {
     handleClose: () => void;
@@ -15,21 +16,22 @@ interface Props {
 export default function ModalConfirmationBody({ handleClose }: Props) {
     const [loading, setLoading] = useState(false);
 
-    const clearIdRestaurantDelete = useRestaurantStore((state) => state.clearIdRestaurantDelete);
-    const idRestaurante = useRestaurantStore((state) => state.idRestaurantDelete);
-    const cliente = useClienteStore((state) => state.cliente);
+    const clearIdRestaurantDelete = useRestaurantStore((state) => state.clearIdRestaurantSelected);
+    const idRestaurante = useRestaurantStore((state) => state.idRestaurantSelected);
+    // const cliente = useClienteStore((state) => state.cliente);
     const tarjetas = useTarjetaStore((state) => state.tarjetas);
     const actualizarTarjetas = useTarjetaStore((state) => state.fetchTarjetasByCliente);
-
-    const tarjetaAEliminar = tarjetas.find((t) => t.res_id === idRestaurante);
+    const { clienteId } = useUserProfile();
 
 
     const handleConfirm = async () => {
 
-        if (!cliente || !idRestaurante) {
+        if (!clienteId || !idRestaurante) {
             toast.error("Falta cliente o restaurante");
             return null;
         }
+
+        const tarjetaAEliminar = tarjetas.find((t) => +t.suc_id === +idRestaurante);
 
         setLoading(true);
         try {
@@ -39,7 +41,7 @@ export default function ModalConfirmationBody({ handleClose }: Props) {
                 return;
             }
             await deleteTarjetaByUser(tarjetaAEliminar.tar_id);
-            await actualizarTarjetas(+cliente.cli_id);
+            await actualizarTarjetas(+clienteId);
             toast.success("Negocio eliminado");
             handleClose();
         } catch (error) {
@@ -60,9 +62,7 @@ export default function ModalConfirmationBody({ handleClose }: Props) {
 
     return (
         <div className="flex flex-col items-center text-center gap-4">
-            <div className="bg-[var(--white)] p-3 rounded-full">
-                <AlertCircle className="text-red-600 w-6 h-6" />
-            </div>
+            <AlertCircle className="text-[var(--violet)] w-10 h-8" />
             <h2 className="text-xl font-bold">¿Eliminar negocio?</h2>
             <p className="text-sm text-gray-500">
                 ¿Estás seguro de que querés eliminar este negocio?
@@ -70,10 +70,10 @@ export default function ModalConfirmationBody({ handleClose }: Props) {
                 Esta acción eliminará todos tus puntos y no se puede deshacer.
             </p>
             <div className="flex gap-4 pt-4 w-full">
-                <Button variant="outline" className="w-full" onClick={handleCancel} disabled={loading}>
+                <Button variant="danger" className="w-full" onClick={handleCancel} disabled={loading}>
                     Cancelar
                 </Button>
-                <Button variant="danger" className="w-full" onClick={handleConfirm} disabled={loading}>
+                <Button variant="primary" className="w-full" onClick={handleConfirm} disabled={loading}>
                     {loading ? (
                         <SpinnerLoader />
                     ) : (

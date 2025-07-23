@@ -1,5 +1,5 @@
-import { useRestaurantStore } from "@/stores/restaurantStore";
-import { useTarjetaStore } from "@/stores/useTarjetaStore";
+import { useRestaurantStore } from "@/stores/useRestaurantStore"; 
+import { useTarjetaStore } from "@/stores/useTarjetasStore"; 
 
 export const useRestaurantUser = () => {
     // restaurantes store
@@ -11,7 +11,7 @@ export const useRestaurantUser = () => {
     const tarjetas = useTarjetaStore((s) => s.tarjetas);
 
     const restaurantesUser = restaurants?.filter((r) => {
-        const tarjeta = tarjetas?.find((t) => t.res_id === r.res_id);
+        const tarjeta = tarjetas?.find((t) => t.suc_id === r.suc_id);
         return tarjeta;
     })
 

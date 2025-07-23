@@ -10,7 +10,7 @@ interface ModalShellProps {
 export default function ModalShell({ children, isMounted, isClosing, handleClose }: ModalShellProps) {
     return (
         <div
-            className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-300 ${
+            className={`fixed inset-0 z-999 flex items-center justify-center transition-all duration-300 ${
                 isMounted ? "opacity-100" : "opacity-0"
             } ${
                 isClosing

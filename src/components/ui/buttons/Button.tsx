@@ -1,7 +1,7 @@
 import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: "primary" | "secondary" | "outline" | "danger" | "success" | "light";
+    variant?: "primary" | "secondary" | "outline" | "danger" | "success" | "light" | "promocion" | "puntos" | "warning";
     fullWidth?: boolean;
     rounded?: "sm" | "md" | "lg" | "xl" | "2xl" | "full";
     size?: "sm" | "md" | "lg";
@@ -10,7 +10,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
     primary:
-        "bg-[var(--violet)] text-[var(--white)] border border-[var(--violet)] hover:bg-transparent hover:text-[var(--violet)]",
+        "bg-[var(--violet-200)] text-[var(--white)] border border-[var(--violet-200)] hover:bg-transparent hover:text-[var(--violet)]",
     secondary:
         "bg-[var(--gray)] text-[var(--black)] border border-[var(--gray)] hover:bg-transparent hover:text-[var(--gray)]",
     outline:
@@ -20,7 +20,13 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
     success:
         "bg-green-500 text-white border border-green-500 hover:bg-transparent hover:text-green-500",
     light:
-        "bg-[var(--violet-200)] text-[var(--violet-600)] border-[var(--violet-200)] hover:bg-white hover:text-[var(--violet)] hover:border-white"
+        "bg-[var(--violet-200)] text-[var(--violet-600)] border-[var(--violet-200)] hover:bg-white hover:text-[var(--violet)] hover:border-white",
+    promocion:
+        "bg-orange-600 text-white border border-transparent hover:bg-transparent hover:text-white hover:border-orange-600 transition-colors duration-300",
+    puntos:
+        "bg-green-600 text-white border border-transparent hover:bg-transparent hover:text-white hover:border-green-600 transition-colors duration-300",
+    warning:
+        "bg-yellow-500 text-white border border-yellow-500 hover:bg-transparent hover:text-yellow-500",
 };
 
 const sizeClasses: Record<"sm" | "md" | "lg", string> = {

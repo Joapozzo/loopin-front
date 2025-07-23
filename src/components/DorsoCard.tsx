@@ -3,7 +3,7 @@ import { Eye } from "lucide-react";
 interface DorsoCardProps {
     clientNombre: string;
     dni: string;
-    codigo: number;
+    tarjeta_nro: string;
     fechaAlta: string;
     onToggle: () => void;
     isVisible: boolean;
@@ -14,7 +14,7 @@ interface DorsoCardProps {
 export default function DorsoCard({
     clientNombre,
     dni,
-    codigo,
+    tarjeta_nro,
     fechaAlta,
     onToggle,
     isVisible,
@@ -48,10 +48,16 @@ export default function DorsoCard({
                     <Eye className="opacity-60" />
                 </button>
             </div>
-            <span className="flex items-center gap-1 text-[var(--white)]">
-                <h3 className="text-4xl font-bold">{puntos}</h3>
-                <p>{puntos == 1 ? "punto" : "puntos"}</p>
-            </span>
+            
+            {/* REEMPLAZAR la sección de puntos con código */}
+            <div className="flex flex-col items-start w-full">
+                <h3 className="text-5xl font-bold text-[var(--white)] mb-2">{tarjeta_nro}</h3>
+                <div className="flex items-center gap-1 text-[var(--white)]/80">
+                    <span className="text-lg font-medium">{puntos}</span>
+                    <p className="text-sm">{puntos == 1 ? "punto" : "puntos"}</p>
+                </div>
+            </div>
+
             <div className="flex flex-col items-end justify-center w-full">
                 <p className="text-md font-semibold">Fecha de alta</p>
                 <p className="text-sm text-[var(--foreground)]">{fechaAlta}</p>

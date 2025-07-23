@@ -1,10 +1,13 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from 'react';
+
+import { useState, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ClienteService } from '../services/cliente.service';
 import {
     ClienteCompleto,
     ClienteFormData,
-    ClienteEndpoints
+    ClienteEndpoints,
+    ClienteApiResponse
 } from '../types/clienteCompleto';
 import {
     PaginationParams,
@@ -12,229 +15,297 @@ import {
     FilterParams,
     TableConfig
 } from '../types/common.types';
-import { debounce } from '@/utils/utils';
 
 export interface UseClientesConfig {
-    apiBaseURL?: string;
     endpoints?: Partial<ClienteEndpoints>;
     initialPageSize?: number;
-    debounceMs?: number;
+    activos?: boolean;
+    enabled?: boolean;
 }
 
 export interface UseClientesReturn {
-    // Estado de la tabla
     tableConfig: TableConfig<ClienteCompleto>;
-
-    // Acciones de paginación
     setPage: (page: number) => void;
     setPageSize: (size: number) => void;
-
-    // Acciones de ordenamiento
     setSorting: (sorting: SortingParams) => void;
-
-    // Acciones de filtrado
     setFilters: (filters: FilterParams) => void;
     setSearch: (search: string) => void;
-
-    // Acciones CRUD
     createCliente: (data: ClienteFormData) => Promise<void>;
-    updateCliente: (id: number, data: Partial<ClienteFormData>) => Promise<void>;
+    updateCliente: (id: number, data: ClienteFormData) => Promise<void>;
     deleteCliente: (id: number) => Promise<void>;
-
-    // Control de estado
     refresh: () => Promise<void>;
+    getClienteById: (id: number) => ClienteCompleto | undefined;
     isCreating: boolean;
     isUpdating: boolean;
     isDeleting: boolean;
+    clientesTotales: number;
+    getClienteByDni: (dni: string) => ClienteCompleto | null;
+    validateDniCliente: (dni: string) => boolean;
+    isRefreshing: boolean;
 }
 
 export const useClientes = (config: UseClientesConfig = {}): UseClientesReturn => {
     const {
-        apiBaseURL,
         endpoints,
         initialPageSize = 10,
-        debounceMs = 300
+        activos = true, // Por defecto muestra clientes activos
+        enabled = true
     } = config;
 
-    // Instancia del servicio
+    const queryClient = useQueryClient();
+    const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL;
+
     const clienteService = useMemo(
-        () => new ClienteService(apiBaseURL, endpoints),
-        [apiBaseURL, endpoints]
+        () => new ClienteService(URI_API, endpoints),
+        [endpoints]
     );
 
-    // Estado de la tabla
-    const [tableConfig, setTableConfig] = useState<TableConfig<ClienteCompleto>>({
-        data: [],
-        loading: false,
-        error: null,
-        pagination: {
-            page: 1,
-            limit: initialPageSize,
-            total: 0,
-            totalPages: 0
-        },
-        sorting: {},
-        filters: {}
+    const [pagination, setPagination] = useState<PaginationParams>({
+        page: 1,
+        limit: initialPageSize,
     });
 
-    // Estados para operaciones CRUD
-    const [isCreating, setIsCreating] = useState(false);
-    const [isUpdating, setIsUpdating] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
+    const [sorting, setSorting] = useState<SortingParams>({});
+    const [filters, setFilters] = useState<FilterParams>({});
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const loadClientes = useCallback(async () => {
-        setTableConfig(prev => ({ ...prev, loading: true, error: null }));
+    // Query principal para obtener clientes
+    const {
+        data: response,
+        isLoading,
+        error,
+        refetch
+    } = useQuery({
+        queryKey: ['clientes', activos],
+        queryFn: async () => {
+            return await clienteService.getClientes(activos);
+        },
+        enabled,
+        staleTime: 5 * 60 * 1000, // 5 minutos
+        gcTime: 10 * 60 * 1000, // 10 minutos
+        retry: 2,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+    });
 
-        try {
-            const response = await clienteService.getClientes(
-                tableConfig.pagination,
-                tableConfig.sorting,
-                tableConfig.filters
-            );
+    const serverData = response?.clientes || [];
 
-            // Ahora response.clientes funciona porque ClienteApiResponse tiene clientes
-            setTableConfig((prev) => ({
-                ...prev,
-                data: response.clientes || [],
-                pagination: {
-                    page: tableConfig.pagination.page,
-                    limit: tableConfig.pagination.limit,
-                    total: response.clientes?.length || 0,
-                    totalPages: Math.ceil((response.clientes?.length || 0) / tableConfig.pagination.limit)
-                },
-                loading: false,
-            }));
+    // Función para normalizar texto (útil para búsquedas)
+    const normalizeText = useCallback((text: string): string => {
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\w\s]/g, '')
+            .trim();
+    }, []);
 
-        } catch (error) {
-            setTableConfig(prev => ({
-                ...prev,
-                loading: false,
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            }));
+    // Función para aplicar ordenamiento local
+    const applySorting = useCallback((data: ClienteCompleto[], sortingParams: SortingParams): ClienteCompleto[] => {
+        if (!sortingParams.sortBy || !sortingParams.sortOrder) return data;
+
+        return [...data].sort((a, b) => {
+            const aValue = a[sortingParams.sortBy as keyof ClienteCompleto];
+            const bValue = b[sortingParams.sortBy as keyof ClienteCompleto];
+
+            if (aValue === bValue) return 0;
+
+            const comparison = aValue < bValue ? -1 : 1;
+            return sortingParams.sortOrder === 'desc' ? -comparison : comparison;
+        });
+    }, []);
+
+    // Función para aplicar filtro de búsqueda local CON NORMALIZACIÓN
+    const applySearch = useCallback((data: ClienteCompleto[], searchTerm: string): ClienteCompleto[] => {
+        if (!searchTerm.trim()) return data;
+
+        const normalizedSearch = normalizeText(searchTerm);
+
+        return data.filter(cliente => {
+            const normalizedNombre = normalizeText(cliente.cli_nom);
+            const normalizedApellido = normalizeText(cliente.cli_ape);
+
+            return normalizedNombre.includes(normalizedSearch) ||
+                normalizedApellido.includes(normalizedSearch);
+        });
+    }, [normalizeText]);
+
+    // Función para aplicar paginación local
+    const applyPagination = useCallback((data: ClienteCompleto[], paginationParams: PaginationParams): ClienteCompleto[] => {
+        const startIndex = (paginationParams.page - 1) * paginationParams.limit;
+        const endIndex = startIndex + paginationParams.limit;
+        return data.slice(startIndex, endIndex);
+    }, []);
+
+    // FUNCIÓN: Buscar cliente por ID
+    const getClienteById = useCallback((id: number): ClienteCompleto | undefined => {
+        return serverData.find(cliente => cliente.cli_id === id);
+    }, [serverData]);
+
+    // Calcular datos procesados usando useMemo
+    const processedData = useMemo(() => {
+        // 1. Aplicar búsqueda local
+        const searchedData = applySearch(serverData, filters.search || '');
+
+        // 2. Aplicar sorting
+        const sortedData = applySorting(searchedData, sorting);
+
+        // 3. Calcular totales
+        const total = sortedData.length;
+        const totalPages = Math.ceil(total / pagination.limit);
+
+        // 4. Aplicar paginación
+        const paginatedData = applyPagination(sortedData, pagination);
+
+        return {
+            data: paginatedData,
+            total,
+            totalPages
+        };
+    }, [
+        serverData,
+        filters.search,
+        sorting,
+        pagination.page,
+        pagination.limit,
+        applySearch,
+        applySorting,
+        applyPagination
+    ]);
+
+    const tableConfig: TableConfig<ClienteCompleto> = useMemo(() => ({
+        data: processedData.data,
+        loading: isLoading || isRefreshing,
+        error: error?.message || null,
+        pagination: {
+            ...pagination,
+            total: processedData.total,
+            totalPages: processedData.totalPages
+        },
+        sorting,
+        filters
+    }), [processedData, isLoading, isRefreshing, error, pagination, sorting, filters]);
+
+    // Mutación para crear cliente - No implementada en servicio actual
+    const createMutation = useMutation({
+        mutationFn: async (data: ClienteFormData) => {
+            throw new Error('Crear cliente no implementado en servicio actual');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        },
+        onError: (error) => {
+            console.error('❌ Error creando cliente:', error);
+            throw error;
         }
-    }, [clienteService, tableConfig.pagination, tableConfig.sorting, tableConfig.filters]);
+    });
 
-    // Función debounced para búsqueda
-    const debouncedLoadClientes = useMemo(
-        () => debounce(loadClientes, debounceMs),
-        [loadClientes, debounceMs]
-    );
-
-    // Efecto para cargar datos cuando cambian los parámetros
-    useEffect(() => {
-        loadClientes();
-    }, [tableConfig.pagination.page, tableConfig.pagination.limit, tableConfig.sorting]);
-
-    // Efecto para búsqueda con debounce
-    useEffect(() => {
-        if (tableConfig.filters.search !== undefined) {
-            debouncedLoadClientes();
+    // Mutación para actualizar cliente - No implementada en servicio actual
+    const updateMutation = useMutation({
+        mutationFn: async ({ id, data }: { id: number; data: ClienteFormData }) => {
+            throw new Error('Actualizar cliente no implementado en servicio actual');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        },
+        onError: (error) => {
+            console.error('❌ Error actualizando cliente:', error);
+            throw error;
         }
-    }, [tableConfig.filters, debouncedLoadClientes]);
+    });
 
-    // Acciones de paginación
+    // Mutación para eliminar cliente - No implementada en servicio actual
+    const deleteMutation = useMutation({
+        mutationFn: async (id: number) => {
+            throw new Error('Eliminar cliente no implementado en servicio actual');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        },
+        onError: (error) => {
+            console.error('❌ Error eliminando cliente:', error);
+            throw error;
+        }
+    });
+
+    // Funciones para actualizar estado
     const setPage = useCallback((page: number) => {
-        setTableConfig(prev => ({
-            ...prev,
-            pagination: { ...prev.pagination, page }
-        }));
+        setPagination(prev => ({ ...prev, page }));
     }, []);
 
     const setPageSize = useCallback((limit: number) => {
-        setTableConfig(prev => ({
-            ...prev,
-            pagination: { ...prev.pagination, limit, page: 1 }
-        }));
+        setPagination(prev => ({ ...prev, limit, page: 1 }));
     }, []);
 
-    // Acciones de ordenamiento
-    const setSorting = useCallback((sorting: SortingParams) => {
-        setTableConfig(prev => ({
-            ...prev,
-            sorting,
-            pagination: { ...prev.pagination, page: 1 }
-        }));
+    const setSortingCallback = useCallback((newSorting: SortingParams) => {
+        setSorting(newSorting);
+        setPagination(prev => ({ ...prev, page: 1 }));
     }, []);
 
-    // Acciones de filtrado
-    const setFilters = useCallback((filters: FilterParams) => {
-        setTableConfig(prev => ({
-            ...prev,
-            filters,
-            pagination: { ...prev.pagination, page: 1 }
-        }));
+    const setFiltersCallback = useCallback((newFilters: FilterParams) => {
+        setFilters(newFilters);
+        setPagination(prev => ({ ...prev, page: 1 }));
     }, []);
 
     const setSearch = useCallback((search: string) => {
-        setFilters({ ...tableConfig.filters, search });
-    }, [setFilters, tableConfig.filters]);
+        setFilters(prev => ({ ...prev, search }));
+        setPagination(prev => ({ ...prev, page: 1 }));
+    }, []);
 
-    // Acciones CRUD
+    // Funciones CRUD
     const createCliente = useCallback(async (data: ClienteFormData) => {
-        setIsCreating(true);
-        try {
-            const response = await clienteService.createCliente(data);
-            if (response.success) {
-                await loadClientes(); // Recargar la lista
-            } else {
-                throw new Error(response.message || 'Error al crear cliente');
-            }
-        } catch (error) {
-            throw error;
-        } finally {
-            setIsCreating(false);
-        }
-    }, [clienteService, loadClientes]);
+        await createMutation.mutateAsync(data);
+    }, [createMutation]);
 
-    const updateCliente = useCallback(async (id: number, data: Partial<ClienteFormData>) => {
-        setIsUpdating(true);
-        try {
-            const response = await clienteService.updateCliente(id, data);
-            if (response.success) {
-                await loadClientes(); // Recargar la lista
-            } else {
-                throw new Error(response.message || 'Error al actualizar cliente');
-            }
-        } catch (error) {
-            throw error;
-        } finally {
-            setIsUpdating(false);
-        }
-    }, [clienteService, loadClientes]);
+    const updateCliente = useCallback(async (id: number, data: ClienteFormData) => {
+        await updateMutation.mutateAsync({ id, data });
+    }, [updateMutation]);
 
     const deleteCliente = useCallback(async (id: number) => {
-        setIsDeleting(true);
-        try {
-            const response = await clienteService.deleteCliente(id);
-            if (response.success) {
-                await loadClientes(); // Recargar la lista
-            } else {
-                throw new Error(response.message || 'Error al eliminar cliente');
-            }
-        } catch (error) {
-            throw error;
-        } finally {
-            setIsDeleting(false);
-        }
-    }, [clienteService, loadClientes]);
+        await deleteMutation.mutateAsync(id);
+    }, [deleteMutation]);
 
     const refresh = useCallback(async () => {
-        await loadClientes();
-    }, [loadClientes]);
+        setIsRefreshing(true);
+        await refetch();
+        setIsRefreshing(false);
+    }, [refetch]);
+
+    // Total de clientes
+    const clientesTotales = useMemo(() => {
+        return tableConfig.pagination.total;
+    }, [tableConfig.pagination.total]);
+
+    // Validar DNI - No disponible en este tipo de cliente
+    const validateDniCliente = useCallback((dni: string): boolean => {
+        console.warn('validateDniCliente: DNI no disponible en ClienteCompleto');
+        return false;
+    }, []);
+
+    // Obtener cliente por DNI - No disponible en este tipo de cliente
+    const getClienteByDni = useCallback((dni: string): ClienteCompleto | null => {
+        console.warn('getClienteByDni: DNI no disponible en ClienteCompleto');
+        return null;
+    }, []);
 
     return {
         tableConfig,
         setPage,
         setPageSize,
-        setSorting,
-        setFilters,
+        setSorting: setSortingCallback,
+        setFilters: setFiltersCallback,
         setSearch,
         createCliente,
         updateCliente,
         deleteCliente,
         refresh,
-        isCreating,
-        isUpdating,
-        isDeleting
+        getClienteById,
+        isCreating: createMutation.isPending,
+        isUpdating: updateMutation.isPending,
+        isDeleting: deleteMutation.isPending,
+        clientesTotales,
+        getClienteByDni,
+        validateDniCliente,
+        isRefreshing
     };
 };

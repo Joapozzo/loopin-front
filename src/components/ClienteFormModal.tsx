@@ -3,7 +3,6 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Modal } from './modals/Modal';
 import Button from './ui/buttons/Button';
 import Input from './ui/inputs/Input';
 import { Select } from './ui/inputs/Select';
@@ -25,7 +24,7 @@ const clienteSchema = z.object({
         .max(50, 'El apellido no puede exceder 50 caracteres')
         .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, 'Solo se permiten letras y espacios'),
 
-    cli_fecha_nac: z
+    cli_fec_nac: z
         .string()
         .min(1, 'La fecha de nacimiento es requerida')
         .refine((date) => {
@@ -96,7 +95,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
         defaultValues: {
             cli_nom: '',
             cli_ape: '',
-            cli_fecha_nac: '',
+            cli_fec_nac: '',
             usu_mail: '',
             usu_cel: '',
             usu_dni: '',
@@ -105,16 +104,27 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
         }
     });
 
+    const formatDateForInput = (dateString: string): string => {
+        try {
+            const date = new Date(dateString);
+            return date.toISOString().split('T')[0]; // Convierte a YYYY-MM-DD
+        } catch (error) {
+            console.error('Error formateando fecha:', error);
+            return '';
+        }
+    };
+
     // Efecto para cargar datos del cliente en edición
     React.useEffect(() => {
         if (isOpen && cliente) {
             setValue('cli_nom', cliente.cli_nom);
             setValue('cli_ape', cliente.cli_ape);
+            setValue('cli_fec_nac', formatDateForInput(cliente.cli_fec_nac));
             setValue('usu_mail', cliente.usu_mail);
             setValue('usu_cel', cliente.usu_cel);
             setValue('usu_dni', cliente.usu_dni);
-            setValue('usu_loc_id', cliente.usu_loc_id);
-            setValue('tip_id', cliente.tip_id);
+            // setValue('usu_loc_id', cliente.usu_loc_id);
+            // setValue('tip_id', cliente.tip_id);
         } else if (isOpen && !cliente) {
             reset();
         }
@@ -140,8 +150,8 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
         >
             <div
                 className={`relative bg-[var(--violet)] text-[var(--white)] rounded-2xl p-8 w-[95%] max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl transition-all duration-300 ${isMounted && !isClosing
-                        ? "opacity-100 scale-100 translate-y-0"
-                        : "opacity-0 scale-95 translate-y-8"
+                    ? "opacity-100 scale-100 translate-y-0"
+                    : "opacity-0 scale-95 translate-y-8"
                     }`}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -209,8 +219,8 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
                                     label="Fecha de Nacimiento *"
                                     variant="outline"
                                     type="date"
-                                    {...register('cli_fecha_nac')}
-                                    error={errors.cli_fecha_nac?.message}
+                                    {...register('cli_fec_nac')}
+                                    error={errors.cli_fec_nac?.message}
                                     icon={<Calendar size={16} />}
                                 />
 
@@ -257,37 +267,16 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
                                     icon={<Phone size={16} />}
                                 />
 
-                                <div>
-                                    <label className="block text-sm font-medium text-[var(--violet-100)] mb-2 flex items-center gap-2">
-                                        <MapPin size={16} />
-                                        Localidad *
-                                    </label>
-                                    <div className="flex items-center rounded-md px-3 py-2 w-full focus-within:ring-2 border border-[var(--violet-200)] focus-within:ring-[var(--violet-200)] bg-transparent hover:border-white transition-all duration-200">
-                                        <div className="text-[var(--violet-200)] w-5 h-5 mr-2">
-                                            <MapPin size={16} />
-                                        </div>
-                                        <select
-                                            {...register('usu_loc_id', { valueAsNumber: true })}
-                                            className="bg-transparent border-none outline-none text-lg font-semibold text-white w-full ml-2"
-                                        >
-                                            <option value={0} className="bg-[var(--violet-600)] text-[var(--violet-200)]">
-                                                Seleccione una localidad
-                                            </option>
-                                            {localidades.map((localidad) => (
-                                                <option
-                                                    key={localidad.value}
-                                                    value={localidad.value}
-                                                    className="bg-[var(--violet-600)] text-white"
-                                                >
-                                                    {localidad.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    {errors.usu_loc_id && (
-                                        <p className="mt-1 text-sm text-red-300">{errors.usu_loc_id.message}</p>
-                                    )}
-                                </div>
+                                <Select
+                                    label="Localidad *"
+                                    icon={<MapPin size={16} />}
+                                    variant="modal"
+                                    placeholder="Seleccione una localidad"
+                                    options={localidades}
+                                    {...register('usu_loc_id', { valueAsNumber: true })}
+                                    error={errors.usu_loc_id?.message}
+                                />
+
                             </div>
                         </div>
                     </div>

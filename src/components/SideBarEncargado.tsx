@@ -14,84 +14,121 @@ import {
     ChevronRight,
     Star,
     MapPin,
+    Ticket,
+    Plus,
 } from 'lucide-react';
 import MenuItem from './MenItem';
 import { useRouter } from 'next/navigation';
 import { useSidebar } from '@/context/SideBarContext';
+import { GlassmorphismButton } from './ui/buttons/ButtonGlass';
+import { useAuth } from '@/hooks/useAuth';
+import { useClientes } from '@/hooks/useClientes';
+import { useProductos } from '@/hooks/useProductos';
+import { useUserProfile } from '@/hooks/userProfile';
+import { useComercioData, useComercioEncargado } from '@/hooks/useComercioEncargado';
 
 const ManagerSidebar = () => {
     const router = useRouter();
+
+    const { logout } = useAuth();
+    const { nombreCompleto } = useUserProfile();
+
+    const { loading, error } = useComercioEncargado();
+    const { comercioData } = useComercioData();
+
     const [activeItem, setActiveItem] = useState('dashboard');
     const { isExpanded, toggleSidebar } = useSidebar();
 
+
+    const { clientesTotales } = useClientes({
+        initialPageSize: 15,
+    });
+    const { productosTotales } = useProductos({
+        initialPageSize: 15,
+    });
+
     const managerData = {
-        name: "Carlos Martínez",
+        name: nombreCompleto,
         restaurant: {
-            name: "La Parrilla del Chef",
-            logo: "🍽️",
-            address: "Av. Corrientes 1234, CABA",
+            name: comercioData?.suc_nom,
+            logo: "/logos/logo-chez.svg",
+            address: comercioData?.suc_dir,
             rating: 4.8,
+            tel: comercioData?.suc_cel,
             category: "Parrilla Argentina"
         },
         stats: {
-            clientesAdheridos: 247,
+            clientesAdheridos: clientesTotales,
             ventasHoy: 15,
             canjesPendientes: 3,
-            puntosOtorgados: 12450
+            puntosOtorgados: 12450,
+            productosTotales: productosTotales,
         }
     };
 
     const menuItems = [
         {
-            id: 'dashboard',
-            label: 'Dashboard',
+            id: "dashboard",
+            label: "Dashboard",
             icon: <LayoutDashboard size={22} />,
-            description: 'Vista general del restaurante'
+            description: "Vista general del restaurante",
         },
         {
-            id: 'clientes',
-            label: 'Clientes',
+            id: "clientes",
+            label: "Clientes",
             icon: <Users size={22} />,
-            description: 'Gestión de clientes adheridos',
-            badge: managerData.stats.clientesAdheridos
+            description: "Gestión de clientes adheridos",
+            badge: managerData.stats.clientesAdheridos,
         },
         {
-            id: 'productos',
-            label: 'Productos',
+            id: "productos",
+            label: "Productos",
             icon: <ChefHat size={22} />,
-            description: 'Gestión del menú y productos'
+            description: "Gestión del menú y productos",
+            badge: managerData.stats.productosTotales,
         },
         {
-            id: 'ventas',
-            label: 'Ventas',
+            id: "codigos",
+            label: "Cupones",
+            icon: <Ticket size={22} />,
+            description: "Registro de compras y ventas",
+            badge: managerData.stats.ventasHoy,
+        },
+        {
+            id: "ventas",
+            label: "Ventas",
             icon: <ShoppingBag size={22} />,
-            description: 'Registro de compras y ventas',
-            badge: managerData.stats.ventasHoy
+            description: "Registro de compras y ventas",
+            badge: managerData.stats.ventasHoy,
         },
         {
-            id: 'canjes',
-            label: 'Canjes',
+            id: "canjes",
+            label: "Canjes",
             icon: <Gift size={22} />,
-            description: 'Confirmar canjes de puntos',
+            description: "Confirmar canjes de puntos",
             badge: managerData.stats.canjesPendientes,
-            badgeColor: 'bg-[var(--rose)]'
+            badgeColor: "bg-[var(--rose)]",
         },
-        {
-            id: 'reportes',
-            label: 'Reportes',
-            icon: <BarChart3 size={22} />,
-            description: 'Análisis y estadísticas'
-        },
-        {
-            id: 'configuracion',
-            label: 'Configuración',
-            icon: <Settings size={22} />,
-            description: 'Ajustes del restaurante'
-        }
+        // {
+        //     id: "reportes",
+        //     label: "Reportes",
+        //     icon: <BarChart3 size={22} />,
+        //     description: "Análisis y estadísticas",
+        // },
+        // {
+        //     id: 'configuracion',
+        //     label: 'Configuración',
+        //     icon: <Settings size={22} />,
+        //     description: 'Ajustes del restaurante'
+        // }
     ];
 
     const goToPage = (id: string) => () => {
         router.push(`/res/${id}`);
+    }
+
+    const handleLogout = () => {
+        logout();
     }
 
     return (
@@ -103,8 +140,9 @@ const ManagerSidebar = () => {
                     // Vista expandida
                     <>
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl shadow-md backdrop-blur-sm flex-shrink-0">
-                                {managerData.restaurant.logo}
+                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-2xl shadow-md backdrop-blur-sm flex-shrink-0">
+                                <img src={managerData.restaurant.logo} alt={managerData.restaurant.name} />
+                                {/* {managerData.restaurant.logo} */}
                             </div>
 
                             <div className="flex-1 min-w-0">
@@ -145,7 +183,7 @@ const ManagerSidebar = () => {
                                     <Settings size={16} />
                                     Configurar
                                 </button>
-                                <button className="flex items-center gap-2 px-3 py-2 bg-red-500/20 rounded-lg text-white text-sm hover:bg-red-500/30 transition-all duration-200 backdrop-blur-sm border border-red-300/20">
+                                <button className="flex items-center gap-2 px-3 py-2 bg-red-500/20 rounded-lg text-white text-sm hover:bg-red-500/30 transition-all duration-200 backdrop-blur-sm border border-red-300/20" onClick={handleLogout}>
                                     <LogOut size={16} />
                                     Salir
                                 </button>
@@ -155,10 +193,10 @@ const ManagerSidebar = () => {
                 ) : (
                     // Vista minimizada
                     <div className="flex flex-col items-center space-y-3">
-                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-lg shadow-md backdrop-blur-sm">
-                            {managerData.restaurant.logo}
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-md backdrop-blur-sm">
+                            <img src={managerData.restaurant.logo} alt={managerData.restaurant.name} />
                         </div>
-                        
+
                         <button
                             onClick={toggleSidebar}
                             className="p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors w-10 h-10 flex items-center justify-center"
@@ -172,24 +210,17 @@ const ManagerSidebar = () => {
             {/* Stats rápidas */}
             {isExpanded && (
                 <div className="p-6 border-b border-white/20">
-                    <div className="bg-gradient-to-r from-white/10 to-white/20 rounded-xl p-4 backdrop-blur-sm border border-white/20">
-                        <h4 className="text-white text-2xl font-bold text-center">
-                            {managerData.stats.puntosOtorgados.toLocaleString()} puntos
-                        </h4>
-                        <p className="text-white/80 text-sm mt-1 text-center">
-                            otorgados hoy
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mt-4">
-                        <div className="bg-white/10 p-3 rounded-lg text-white backdrop-blur-sm border border-white/10">
-                            <div className="text-xs opacity-80">Clientes</div>
-                            <div className="text-lg font-bold">{managerData.stats.clientesAdheridos}</div>
-                        </div>
-                        <div className="bg-white/10 p-3 rounded-lg text-white backdrop-blur-sm border border-white/10">
-                            <div className="text-xs opacity-80">Ventas Hoy</div>
-                            <div className="text-lg font-bold">{managerData.stats.ventasHoy}</div>
-                        </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <GlassmorphismButton
+                            label="Venta"
+                            variant="info"
+                            icon={<Plus />}
+                        />
+                        <GlassmorphismButton
+                            label="Canje"
+                            variant="warning"
+                            icon={<Plus />}
+                        />
                     </div>
                 </div>
             )}

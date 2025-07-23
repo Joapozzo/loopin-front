@@ -2,15 +2,20 @@
 "use client";
 
 import React from 'react';
-import { ShoppingBag, DollarSign, Users, Star } from 'lucide-react';
+import { ShoppingBag, Users, Star } from 'lucide-react';
 import { StatCard } from './StatCard';
 import { SimpleChart } from './SimpleChart';
 import { RecentSales } from './RecentSales';
 import { QuickActions } from './QuickActions';
 import { TopProducts } from './TopProducts';
-import { NotificationCenter } from './NotificacionCenter'; 
+import { NotificationCenter } from './NotificacionCenter';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { formatCurrency, formatFullDate } from '@/utils/formatters';
+import Button from './ui/buttons/Button';
+import { StatCardsSkeleton } from './skeletons/Dashboard/StatCardsSkeleton';
+import { SimpleChartsSkeleton } from './skeletons/Dashboard/SimpleChartSkeleton';
+import { RecentSalesSkeleton } from './skeletons/Dashboard/RecentSalesSkeleton';
+import { NotificationCenterSkeleton } from './skeletons/Dashboard/NotificationCenterSkeleton';
 
 const Dashboard: React.FC = () => {
     const {
@@ -83,38 +88,35 @@ const Dashboard: React.FC = () => {
                     </p>
                 </div>
                 <div className="flex items-center space-x-3">
-                    <button
+                    <Button
                         onClick={refreshData}
                         disabled={isLoading}
-                        className="bg-white border border-[var(--gray-200)] text-[var(--gray-400)] px-4 py-2 rounded-xl hover:bg-[var(--gray-100)] transition-colors disabled:opacity-50"
+                        variant='primary'
                     >
                         {isLoading ? 'Actualizando...' : 'Actualizar'}
-                    </button>
-                    <button
+                    </Button>
+                    {/* <button
                         onClick={handleGenerateReport}
                         className="bg-[var(--violet)] text-white px-6 py-3 rounded-xl hover:bg-[var(--violet-200)] transition-colors"
                     >
                         Exportar Reporte
-                    </button>
+                    </button> */}
                 </div>
             </div>
 
             {/* Loading State */}
             {isLoading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-[var(--gray-100)] animate-pulse">
-                            <div className="w-12 h-12 bg-[var(--gray-200)] rounded-xl mb-4"></div>
-                            <div className="h-8 bg-[var(--gray-200)] rounded mb-2"></div>
-                            <div className="h-4 bg-[var(--gray-200)] rounded w-2/3"></div>
-                        </div>
-                    ))}
-                </div>
+                <>
+                    <StatCardsSkeleton />
+                    <SimpleChartsSkeleton />
+                    <RecentSalesSkeleton />
+                    <NotificationCenterSkeleton/>
+                </>
             )}
 
             {/* Stats Cards */}
             {!isLoading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <StatCard
                         title="Ventas de Hoy"
                         value={stats.ventasHoy}
@@ -123,14 +125,14 @@ const Dashboard: React.FC = () => {
                         color="bg-[var(--violet)]"
                         subtitle="vs. ayer"
                     />
-                    <StatCard
+                    {/* <StatCard
                         title="Monto Total"
                         value={formatCurrency(stats.montoTotal)}
                         change={15.2}
                         icon={<DollarSign size={24} />}
                         color="bg-[var(--success)]"
                         subtitle="ingreso del día"
-                    />
+                    /> */}
                     <StatCard
                         title="Clientes Atendidos"
                         value={stats.clientesAtendidos}

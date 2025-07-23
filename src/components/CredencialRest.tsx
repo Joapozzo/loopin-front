@@ -3,10 +3,8 @@
 import { useState } from "react";
 import FrenteCard from "./FrenteCard";
 import DorsoCard from "./DorsoCard";
-import { Tarjeta } from "@/types/tarjeta";
-import { Restaurant } from "@/types/restaurant";
+import { Tarjeta } from "@/types/canje";
 import { ClienteCompleto } from "@/types/clienteCompleto";
-import { useRestaurantStore } from "@/stores/restaurantStore";
 
 interface TarjetasProps {
     tarjeta: Tarjeta;
@@ -14,16 +12,16 @@ interface TarjetasProps {
 }
 
 export default function CredencialRest({ tarjeta, cliente }: TarjetasProps) {
-    const { tar_id, tar_puntos_disponibles, tar_fecha_emision } = tarjeta;
+    const { tar_puntos_disponibles, tar_fecha_emision } = tarjeta;
+    // console.log(tarjeta);
 
-    const getRestaurantById = useRestaurantStore((s) => s.getRestaurantById);
-
-    const rest = getRestaurantById(tarjeta.res_id);
-
-    if (!rest || !cliente) {
-        return null;
+    if (!tarjeta || !cliente) {
+        return (
+            <div className="w-full p-4 bg-gray-100 rounded-lg">
+                <p className="text-gray-500">Datos de tarjeta incompletos</p>
+            </div>
+        );
     }
-
     const [isFlipping, setIsFlipping] = useState(false);
     const [revealed, setRevealed] = useState(false);
 
@@ -41,8 +39,8 @@ export default function CredencialRest({ tarjeta, cliente }: TarjetasProps) {
 
     return (
         <div className="w-full flex flex-col gap-4">
-            <h3 className="text-2xl font-bold text-[var(--violet)]">
-                {rest.res_nom}
+            <h3 className="text-xl font-medium text-[var(--violet)]">
+                {tarjeta.suc_nom}
             </h3>
 
             {/* <div className="bg-[var(--rose)] p-4 rounded-lg flex items-center gap-2 w-full">
@@ -65,7 +63,7 @@ export default function CredencialRest({ tarjeta, cliente }: TarjetasProps) {
                     <DorsoCard
                         clientNombre={cliente.cli_nom}
                         dni={cliente.cli_ape}
-                        codigo={tar_id}
+                        tarjeta_nro={tarjeta.tar_nro}
                         fechaAlta={tar_fecha_emision}
                         onToggle={toggleRevealed}
                         isVisible={revealed}

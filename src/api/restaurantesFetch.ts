@@ -1,4 +1,6 @@
-import { URI_API } from "@/data/utils";
+// import { URI_API } from "@/data/utils";
+
+const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export const getAllRestaurants = async () => {
     const response = await fetch(`${URI_API}/restaurantes`);
@@ -11,3 +13,15 @@ export const getRestaurantById = async (id: number) => {
     const data = await response.json();
     return data;
 };
+
+export const getComecioByEncargado = async (token : string) => {
+    const response = await fetch(`${URI_API}/encargado_sucursal/sucursal`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        }
+    });
+    const data = await response.json();
+    return data;
+}

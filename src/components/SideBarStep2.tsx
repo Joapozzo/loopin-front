@@ -9,7 +9,6 @@ interface SideBarStep2Props {
     }
 }
 
-
 const SideBarStep2 = ({ data }: SideBarStep2Props) => {
     return (
         <>

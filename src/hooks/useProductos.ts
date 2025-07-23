@@ -1,10 +1,12 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from 'react';
+
+import { useState, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProductoService } from '../services/producto.service';
 import {
     Product,
-    ProductoFormData,
-    ProductoEndpoints
+    ProductoEndpoints,
+    ProductoFormData
 } from '../types/product';
 import {
     PaginationParams,
@@ -12,13 +14,19 @@ import {
     FilterParams,
     TableConfig
 } from '../types/common.types';
-import { debounce } from '@/utils/utils';
 
 export interface UseProductosConfig {
-    apiBaseURL?: string;
     endpoints?: Partial<ProductoEndpoints>;
     initialPageSize?: number;
-    debounceMs?: number;
+    mode?: 'general' | 'sucursal' | 'by_sucursal_id';
+    sucursalId?: number;
+    negocioId?: number
+    enabled?: boolean;
+}
+
+export interface ProductoUpdateData {
+    data: ProductoFormData;
+    foto?: File;
 }
 
 export interface UseProductosReturn {
@@ -28,179 +36,324 @@ export interface UseProductosReturn {
     setSorting: (sorting: SortingParams) => void;
     setFilters: (filters: FilterParams) => void;
     setSearch: (search: string) => void;
-    createProducto: (data: ProductoFormData) => Promise<void>;
-    updateProducto: (id: number, data: Partial<ProductoFormData>) => Promise<void>;
+    createProducto: (data: any) => Promise<void>;
+    updateProducto: (id: number, data: ProductoUpdateData) => Promise<void>; // ACTUALIZADO
     deleteProducto: (id: number) => Promise<void>;
     refresh: () => Promise<void>;
+    getProductoById: (id: number) => Product | undefined;
     isCreating: boolean;
     isUpdating: boolean;
     isDeleting: boolean;
+    productosTotales: number;
+    mode?: 'general' | 'sucursal' | 'by_sucursal_id';
+    setCategory: (categoryId: number | null) => void;
 }
 
 export const useProductos = (config: UseProductosConfig = {}): UseProductosReturn => {
     const {
-        apiBaseURL,
         endpoints,
         initialPageSize = 10,
-        debounceMs = 300
+        mode = 'general',
+        enabled = true
     } = config;
 
+    const queryClient = useQueryClient();
+    const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL;
+
     const productoService = useMemo(
-        () => new ProductoService(apiBaseURL, endpoints),
-        [apiBaseURL, endpoints]
+        () => new ProductoService(URI_API, endpoints),
+        [endpoints]
     );
 
-    const [tableConfig, setTableConfig] = useState<TableConfig<Product>>({
-        data: [],
-        loading: false,
-        error: null,
-        pagination: {
-            page: 1,
-            limit: initialPageSize,
-            total: 0,
-            totalPages: 0
-        },
-        sorting: {},
-        filters: {}
+    const [pagination, setPagination] = useState<PaginationParams>({
+        page: 1,
+        limit: initialPageSize,
     });
 
-    const [isCreating, setIsCreating] = useState(false);
-    const [isUpdating, setIsUpdating] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
+    const [sorting, setSorting] = useState<SortingParams>({});
+    const [filters, setFilters] = useState<FilterParams>({
+        categoria: undefined // agregar esta línea
+    });
 
-    const loadProductos = useCallback(async () => {
-        setTableConfig(prev => ({ ...prev, loading: true, error: null }));
+    const {
+        data: response,
+        isLoading,
+        error,
+        refetch
+    } = useQuery({
+        queryKey: ['productos', mode, config.negocioId, config.sucursalId],
+        queryFn: async () => {
+            if (mode === 'sucursal') {
+                return await productoService.getProductosSucursal(
+                    { page: 1, limit: 1000 },
+                    {},
+                    {}
+                );
+            } else if (mode === 'by_sucursal_id' && config.negocioId && config.sucursalId) {
+                return await productoService.getProductosBySucursalId(
+                    config.negocioId,
+                    config.sucursalId,
+                    { page: 1, limit: 1000 },
+                    {},
+                    {}
+                );
+            } else {
+                return await productoService.getProductos(
+                    { page: 1, limit: 1000 },
+                    {},
+                    {}
+                );
+            }
+        },
+        enabled,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        retry: 2,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+    });
 
-        try {
-            const response = await productoService.getProductos(
-                tableConfig.pagination,
-                tableConfig.sorting,
-                tableConfig.filters
-            );
+    const serverData = response?.productos || [];
 
-            setTableConfig((prev) => ({
-                ...prev,
-                data: response.productos || [],
-                pagination: {
-                    page: tableConfig.pagination.page,
-                    limit: tableConfig.pagination.limit,
-                    total: response.productos?.length || 0,
-                    totalPages: Math.ceil((response.productos?.length || 0) / tableConfig.pagination.limit)
-                },
-                loading: false,
-            }));
+    const normalizeText = useCallback((text: string): string => {
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\w\s]/g, '')
+            .trim();
+    }, []);
 
-        } catch (error) {
-            setTableConfig(prev => ({
-                ...prev,
-                loading: false,
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            }));
+    const applySorting = useCallback((data: Product[], sortingParams: SortingParams): Product[] => {
+        if (!sortingParams.sortBy || !sortingParams.sortOrder) return data;
+
+        return [...data].sort((a, b) => {
+            const aValue = a[sortingParams.sortBy as keyof Product];
+            const bValue = b[sortingParams.sortBy as keyof Product];
+
+            if (aValue === bValue) return 0;
+
+            if (!aValue || !bValue) return 0;
+
+            const comparison = aValue < bValue ? -1 : 1;
+            return sortingParams.sortOrder === 'desc' ? -comparison : comparison;
+        });
+    }, []);
+
+    const applySearch = useCallback((data: Product[], searchTerm: string): Product[] => {
+        if (!searchTerm.trim()) return data;
+
+        const normalizedSearch = normalizeText(searchTerm);
+
+        return data.filter(product => {
+            const normalizedProductName = normalizeText(product.pro_nom);
+            return normalizedProductName.includes(normalizedSearch);
+        });
+    }, [normalizeText]);
+
+    const applyFilters = useCallback((data: Product[], filterParams: FilterParams): Product[] => {
+        let filteredData = data;
+
+        if (filterParams.categoria) {
+            // Mapeo de IDs a nombres
+            const categoryMap: Record<number, string> = {
+                1: "Desayuno",
+                2: "Almuerzo",
+                3: "Merienda",
+                4: "Cena",
+                5: "Postre",
+                6: "Bebida"
+            };
+
+            const categoryName = categoryMap[filterParams.categoria];
+            if (categoryName) {
+                filteredData = filteredData.filter(product =>
+                    product.cat_tip_nom === categoryName
+                );
+            }
         }
-    }, [productoService, tableConfig.pagination, tableConfig.sorting, tableConfig.filters]);
 
-    const debouncedLoadProductos = useMemo(
-        () => debounce(loadProductos, debounceMs),
-        [loadProductos, debounceMs]
-    );
+        return filteredData;
+    }, []);
 
-    useEffect(() => {
-        loadProductos();
-    }, [tableConfig.pagination.page, tableConfig.pagination.limit, tableConfig.sorting]);
+    const applyPagination = useCallback((data: Product[], paginationParams: PaginationParams): Product[] => {
+        const startIndex = (paginationParams.page - 1) * paginationParams.limit;
+        const endIndex = startIndex + paginationParams.limit;
+        return data.slice(startIndex, endIndex);
+    }, []);
 
-    useEffect(() => {
-        if (tableConfig.filters.search !== undefined) {
-            debouncedLoadProductos();
+    const getProductoById = useCallback((id: number): Product | undefined => {
+        return serverData.find(product => product.pro_id === id);
+    }, [serverData]);
+
+    const processedData = useMemo(() => {
+        const searchedData = applySearch(serverData, filters.search || '');
+        const filteredData = applyFilters(searchedData, filters); // agregar esta línea
+        const sortedData = applySorting(filteredData, sorting);
+        const total = sortedData.length;
+        const totalPages = Math.ceil(total / pagination.limit);
+        const paginatedData = applyPagination(sortedData, pagination);
+
+        return {
+            data: paginatedData,
+            total,
+            totalPages
+        };
+    }, [
+        serverData,
+        filters.search,
+        filters.categoria,
+        sorting,
+        pagination.page,
+        pagination.limit,
+        applySearch,
+        applyFilters,
+        applySorting,
+        applyPagination
+    ]);
+
+    const setCategory = useCallback((categoryId: number | null) => {
+        if (!categoryId) {
+            setFilters(prev => ({ ...prev, categoria: undefined }));
+        } else {
+            // Necesitas acceso a las categorías para convertir ID a nombre
+            // Puedes pasar las categorías como parámetro o usar un hook de categorías aquí
+            // Por ahora, cambia el tipo de filtro para usar ID
+            setFilters(prev => ({ ...prev, categoria: categoryId }));
         }
-    }, [tableConfig.filters, debouncedLoadProductos]);
+        setPagination(prev => ({ ...prev, page: 1 }));
+    }, []);
+    const tableConfig: TableConfig<Product> = useMemo(() => ({
+        data: processedData.data,
+        loading: isLoading,
+        error: error?.message || null,
+        pagination: {
+            ...pagination,
+            total: processedData.total,
+            totalPages: processedData.totalPages
+        },
+        sorting,
+        filters
+    }), [processedData, isLoading, error, pagination, sorting, filters]);
 
+    // Mutación para crear productos
+    const createMutation = useMutation({
+        mutationFn: async (data: any) => {
+            if (mode !== 'sucursal') {
+                throw new Error('La creación de productos solo está disponible para encargados de sucursal');
+            }
+            return await productoService.createProducto(data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['productos', mode] });
+        },
+        onError: (error) => {
+            console.error('❌ Error creando producto:', error);
+        }
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: async ({ id, updateData }: { id: number; updateData: ProductoUpdateData }) => {
+            if (mode !== 'sucursal') {
+                throw new Error('La actualización de productos solo está disponible para encargados de sucursal');
+            }
+
+            // LÓGICA SIMPLIFICADA
+            if (updateData.foto) {
+                // Si hay foto nueva, actualizar la foto primero
+                await productoService.updateProductoPhoto(id, updateData.foto);
+            }
+
+            // Siempre actualizar los datos 
+            // (pro_url_foto ya viene condicionalmente desde ProductFormModal)
+            return await productoService.updateProductoData(id, updateData.data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['productos', mode] });
+            console.log('✅ Producto actualizado exitosamente');
+        },
+        onError: (error) => {
+            console.error('❌ Error actualizando producto:', error);
+        }
+    });
+    const deleteMutation = useMutation({
+        mutationFn: async (id: number) => {
+            if (mode !== 'sucursal') {
+                throw new Error('La eliminación de productos solo está disponible para encargados de sucursal');
+            }
+            return await productoService.deleteProducto(id);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['productos', mode] });
+        },
+        onError: (error) => {
+            console.error('❌ Error eliminando producto:', error);
+        }
+    });
+
+    // Funciones para actualizar estado
     const setPage = useCallback((page: number) => {
-        setTableConfig(prev => ({
-            ...prev,
-            pagination: { ...prev.pagination, page }
-        }));
+        setPagination(prev => ({ ...prev, page }));
     }, []);
 
     const setPageSize = useCallback((limit: number) => {
-        setTableConfig(prev => ({
-            ...prev,
-            pagination: { ...prev.pagination, limit, page: 1 }
-        }));
+        setPagination(prev => ({ ...prev, limit, page: 1 }));
     }, []);
 
-    const setSorting = useCallback((sorting: SortingParams) => {
-        setTableConfig(prev => ({
-            ...prev,
-            sorting,
-            pagination: { ...prev.pagination, page: 1 }
-        }));
+    const setSortingCallback = useCallback((newSorting: SortingParams) => {
+        setSorting(newSorting);
+        setPagination(prev => ({ ...prev, page: 1 }));
     }, []);
 
-    const setFilters = useCallback((filters: FilterParams) => {
-        setTableConfig(prev => ({
-            ...prev,
-            filters,
-            pagination: { ...prev.pagination, page: 1 }
-        }));
+    const setFiltersCallback = useCallback((newFilters: FilterParams) => {
+        setFilters(newFilters);
+        setPagination(prev => ({ ...prev, page: 1 }));
     }, []);
 
     const setSearch = useCallback((search: string) => {
-        setFilters({ ...tableConfig.filters, search });
-    }, [setFilters, tableConfig.filters]);
+        setFilters(prev => ({ ...prev, search }));
+        setPagination(prev => ({ ...prev, page: 1 }));
+    }, []);
 
-    const createProducto = useCallback(async (data: ProductoFormData) => {
-        setIsCreating(true);
-        try {
-            await productoService.createProducto(data);
-            await loadProductos();
-        } catch (error) {
-            throw error;
-        } finally {
-            setIsCreating(false);
-        }
-    }, [productoService, loadProductos]);
+    // Funciones CRUD
+    const createProducto = useCallback(async (data: any) => {
+        await createMutation.mutateAsync(data);
+    }, [createMutation]);
 
-    const updateProducto = useCallback(async (id: number, data: Partial<ProductoFormData>) => {
-        setIsUpdating(true);
-        try {
-            await productoService.updateProducto(id, data);
-            await loadProductos();
-        } catch (error) {
-            throw error;
-        } finally {
-            setIsUpdating(false);
-        }
-    }, [productoService, loadProductos]);
+    // ACTUALIZADA: Nueva función updateProducto
+    const updateProducto = useCallback(async (id: number, updateData: ProductoUpdateData) => {
+        await updateMutation.mutateAsync({ id, updateData });
+    }, [updateMutation]);
 
     const deleteProducto = useCallback(async (id: number) => {
-        setIsDeleting(true);
-        try {
-            await productoService.deleteProducto(id);
-            await loadProductos();
-        } catch (error) {
-            throw error;
-        } finally {
-            setIsDeleting(false);
-        }
-    }, [productoService, loadProductos]);
+        await deleteMutation.mutateAsync(id);
+    }, [deleteMutation]);
 
     const refresh = useCallback(async () => {
-        await loadProductos();
-    }, [loadProductos]);
+        await refetch();
+    }, [refetch]);
+
+    const productosTotales = useMemo(() => {
+        return tableConfig.pagination.total;
+    }, [tableConfig.pagination.total]);
 
     return {
         tableConfig,
         setPage,
         setPageSize,
-        setSorting,
-        setFilters,
+        setSorting: setSortingCallback,
+        setFilters: setFiltersCallback,
         setSearch,
         createProducto,
         updateProducto,
         deleteProducto,
         refresh,
-        isCreating,
-        isUpdating,
-        isDeleting
+        getProductoById,
+        isCreating: createMutation.isPending,
+        isUpdating: updateMutation.isPending,
+        isDeleting: deleteMutation.isPending,
+        productosTotales,
+        mode,
+        setCategory
     };
 };

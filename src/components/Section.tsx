@@ -2,14 +2,16 @@
 import { motion } from "framer-motion";
 
 interface SectionProps {
+    id?: string;
     title?: string;
     children: React.ReactNode;
 }
 
-export default function Section({ title, children }: SectionProps) {
+export default function Section({ title, children, id }: SectionProps) {
     return (
         <motion.section
-            className="flex flex-col gap-3 w-full"
+            id={id}
+            className="flex flex-col gap-3 w-full mt-2"
             initial={{ opacity: 0, y: -60 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -60 }}

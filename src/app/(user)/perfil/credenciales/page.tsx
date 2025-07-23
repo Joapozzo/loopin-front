@@ -1,41 +1,32 @@
 "use client";
 import CredencialRest from "@/components/CredencialRest";
 import HeroLayout from "@/components/layouts/HeroLayout";
-import DesktopLayout from "@/components/layouts/LayoutContent";
 import MobileLayout from "@/components/layouts/MobileLayout";
-import GradientCard from "@/components/GradientCard"; 
+import GradientCard from "@/components/GradientCard";
 import Section from "@/components/Section";
 import BackButton from "@/components/ui/buttons/BackButton";
-import { useClienteStore } from "@/stores/useClienteCompleto";
-import { useTarjetaStore } from "@/stores/useTarjetaStore";
-import { useEffect } from "react";
 import { CreditCard, User } from "lucide-react";
+import { useUserProfile } from "@/hooks/userProfile";
+import { useTarjetas } from "@/hooks/useTarjetas";
+import SpinnerLoader from "@/components/ui/SpinerLoader";
 
 export default function Page() {
+    const { tarjetas, loading, error } = useTarjetas();
+    const { userData } = useUserProfile();
 
-    const cliente = useClienteStore((s) => s.cliente);
-    const tarjetas = useTarjetaStore((s) => s.tarjetas);
-    const fetchTarjetasByCliente = useTarjetaStore((s) => s.fetchTarjetasByCliente);
-
-    useEffect(() => {
-        if (cliente) {
-            fetchTarjetasByCliente(cliente.cli_id);
-        }
-    }, [cliente]);
-
-    if (!cliente) {
+    if (!userData || loading || error) {
         return (
-            <DesktopLayout>
+            <>
                 <div className="flex items-center justify-center min-h-[50vh]">
-                    <p className="text-gray-500 text-lg">Cargando...</p>
+                    <SpinnerLoader/>
                 </div>
-            </DesktopLayout>
+            </>
         );
     }
 
-    if (tarjetas.length === 0) {
+    if (tarjetas.length === 0 || !tarjetas) {
         return (
-            <DesktopLayout>
+            <>
                 {/* VERSIÓN MÓVIL */}
                 <div className="md:hidden">
                     <HeroLayout>
@@ -62,7 +53,7 @@ export default function Page() {
 
                 <MobileLayout>
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="bg-gray-50 rounded-full p-6 mb-4">
+                        <div className="bg-gray-50 rounded-full p-6">
                             <CreditCard className="w-12 h-12 text-gray-400" />
                         </div>
                         <h3 className="text-lg font-semibold text-gray-700 mb-2">
@@ -73,12 +64,12 @@ export default function Page() {
                         </p>
                     </div>
                 </MobileLayout>
-            </DesktopLayout>
+            </>
         );
     }
 
     return (
-        <DesktopLayout>
+        <>
             {/* VERSIÓN MÓVIL - Funcionalidad completa */}
             <div className="md:hidden">
                 <HeroLayout>
@@ -111,7 +102,7 @@ export default function Page() {
                                 <CreditCard size={28} className="text-[var(--violet)]" />
                             </div>
                             <div className="flex-1">
-                                <h2 className="text-[var(--violet)] text-2xl font-bold mb-1">
+                                <h2 className="text-[var(--violet)] text-2xl font-medium mb-1">
                                     {tarjetas.length} Credencial{tarjetas.length !== 1 ? 'es' : ''}
                                 </h2>
                                 <p className="text-gray-600 text-sm">
@@ -121,7 +112,7 @@ export default function Page() {
                             <div className="flex items-center gap-4">
                                 <div className="bg-white/70 rounded-lg px-4 py-2 border border-white/60 text-center">
                                     <div className="text-[var(--violet)] text-lg font-bold">
-                                        {cliente.cli_nom}
+                                        {userData.cli_nom}
                                     </div>
                                     <p className="text-gray-600 text-xs">Titular</p>
                                 </div>
@@ -136,11 +127,11 @@ export default function Page() {
                 <Section>
                     <div className="flex flex-wrap gap-6">
                         {tarjetas.map((t) => (
-                            <CredencialRest tarjeta={t} cliente={cliente} key={t.tar_id} />
+                            <CredencialRest tarjeta={t} cliente={userData} key={t.tar_id} />
                         ))}
                     </div>
                 </Section>
             </MobileLayout>
-        </DesktopLayout>
+        </>
     );
 }

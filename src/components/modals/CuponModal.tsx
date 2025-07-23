@@ -1,42 +1,47 @@
 "use client";
 
 import { useAnimatedModal } from "@/hooks/useAnimatedModal";
-import { useCodigosStore } from "@/stores/codigosStore";
+import { useCodigosStore } from "@/stores/useCodigosStore";
 import { useModalStore } from "@/stores/useModalStore";
 import { useCodigoGenerado } from "@/hooks/useCodigoGenerado";
-import { X } from "lucide-react";
+import { X, RefreshCw, Check } from "lucide-react";
+import { useProductoStore } from "@/stores/useProductStore";
+import Button from "../ui/buttons/Button";
+import SpinnerLoader from "../ui/SpinerLoader";
 
 export default function CuponModal() {
     const clearSeleccionados = useCodigosStore((state) => state.clearSeleccionados);
-
-    const codigo = useCodigosStore((state) => state.codigoSeleccionado);
-    const producto = useCodigosStore((state) => state.productoSeleccionado);
+    const producto = useProductoStore((state) => state.producto);
 
     const isCuponModalOpen = useModalStore((state) => state.modalType === "cupon");
     const closeCuponModal = useModalStore((state) => state.closeModal);
 
     const { isMounted, isClosing, handleClose } = useAnimatedModal(isCuponModalOpen, closeCuponModal);
 
-    const { codigo: codigoGenerado, loading: loadingGeneracion, error: errorGeneracion } = useCodigoGenerado(
-        codigo ? null : producto
-    );
+    const {
+        codigoResponse,
+        loading: loadingGeneracion,
+        error: errorGeneracion,
+        regenerarCodigo,
+        invalidarCodigos
+    } = useCodigoGenerado(producto);
 
     if (!isCuponModalOpen) return null;
 
     const closeAndClearCuponModal = () => {
         handleClose();
         clearSeleccionados();
+        invalidarCodigos();
     };
 
-    // Determinar qué código usar
-    const codigoActual = codigo || codigoGenerado;
-
-    // Mostrar loading si está generando
-    if (!codigo && loadingGeneracion) {
+    if (loadingGeneracion || !codigoResponse) {
         return (
             <div
                 className={`fixed inset-0 z-99 flex items-center justify-center transition-all duration-300 ${isMounted ? "opacity-100" : "opacity-0"
-                    } ${isClosing ? "backdrop-blur-none bg-black/0" : "backdrop-blur-sm bg-black/60"}`}
+                    } ${isClosing
+                        ? "backdrop-blur-none bg-black/0"
+                        : "backdrop-blur-sm bg-black/60"
+                    }`}
                 onClick={closeAndClearCuponModal}
             >
                 <div
@@ -46,9 +51,9 @@ export default function CuponModal() {
                         }`}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                        <span className="ml-3">Generando cupón...</span>
+                    <div className="flex items-center justify-center w-full flex-col gap-2">
+                        <SpinnerLoader />
+                        <span>Generando cupón...</span>
                     </div>
                 </div>
             </div>
@@ -56,7 +61,7 @@ export default function CuponModal() {
     }
 
     // Mostrar error si falló la generación
-    if (!codigo && errorGeneracion) {
+    if (errorGeneracion) {
         return (
             <div
                 className={`fixed inset-0 z-99 flex items-center justify-center transition-all duration-300 ${isMounted ? "opacity-100" : "opacity-0"
@@ -77,27 +82,26 @@ export default function CuponModal() {
                         <X size={24} className="hover:rotate-90 transition-transform duration-200" />
                     </button>
                     <div className="text-center">
-                        <h3 className="text-lg font-bold mb-2">Error</h3>
-                        <p>{errorGeneracion}</p>
+                        <h3 className="text-lg font-bold mb-4">Error al generar cupón</h3>
+                        <p className="mb-6">{errorGeneracion}</p>
+                        <button
+                            onClick={regenerarCodigo}
+                            className="bg-[var(--violet-600)] hover:bg-[var(--violet-700)] px-4 py-2 rounded-lg transition-colors flex items-center gap-2 mx-auto"
+                        >
+                            <RefreshCw size={16} />
+                            Reintentar
+                        </button>
                     </div>
                 </div>
             </div>
         );
     }
 
-    // Si no hay código ni producto, no mostrar nada
-    if (!codigoActual || !producto) {
-        return null;
-    }
-
-    // Formatear fecha de expiración
-    const fechaExpiracion = codigoActual.cod_fecha_expiracion
-        ? new Date(codigoActual.cod_fecha_expiracion).toLocaleDateString("es-AR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric"
-        })
-        : "Sin fecha";
+    const fechaExpiracion = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
 
     return (
         <div
@@ -119,12 +123,12 @@ export default function CuponModal() {
                     <X size={24} className="hover:rotate-90 transition-transform duration-200" />
                 </button>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-4">
                     <span
                         className={`bg-[var(--violet-200)] text-[var(--violet-600)] px-3 py-1 rounded-lg w-fit font-bold text-lg transition-all duration-500 delay-100 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                             }`}
                     >
-                        VALE
+                        CUPÓN GENERADO
                     </span>
 
                     <h2
@@ -143,20 +147,36 @@ export default function CuponModal() {
                     </div>
 
                     <div
-                        className={`flex flex-col gap-1 transition-all duration-500 delay-250 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+                        className={`flex flex-col gap-2 transition-all duration-500 delay-250 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                             }`}
                     >
                         <p className="text-sm font-semibold text-[var(--violet-100)]">Código:</p>
-                        <p className="text-2xl font-bold tracking-widest bg-[var(--violet-600)] rounded-lg text-start overflow-hidden">
-                            <span className="inline-block animate-shimmer">{codigoActual?.cod_publico}</span>
-                        </p>
+                        <div className="bg-[var(--violet-600)] rounded-lg text-start">
+                            <p className="text-2xl font-bold tracking-widest">
+                                {codigoResponse.codigo_cupon}
+                            </p>
+                        </div>
                     </div>
 
                     <div
                         className={`pt-4 mt-2 border-t border-[var(--violet-300)] text-sm text-[var(--violet-100)] transition-all duration-500 delay-300 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                             }`}
                     >
-                        Acercale este código al gerente o cajero para canjear tu cupón.
+                        Acércale este código al gerente o cajero para canjear tu cupón.
+                    </div>
+
+                    <div
+                        className={`flex gap-3 pt-4 transition-all duration-500 delay-350 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+                            }`}
+                    >
+                        <Button
+                            onClick={closeAndClearCuponModal}
+                            variant="success"
+                            className="w-full flex items-center justify-center gap-2"
+                        >
+                            <Check size={16} />
+                            Finalizar
+                        </Button>
                     </div>
                 </div>
             </div>

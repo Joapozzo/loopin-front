@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Modal } from './Modal'; 
-import Button from '../ui/buttons/Button'; 
-import Input from '../ui/inputs/Input'; 
-import { Product, ProductoFormData } from '../../types/product'
-import { Package, DollarSign, Hash, Image, MapPin } from 'lucide-react';
+import Button from '../ui/buttons/Button';
+import Input from '../ui/inputs/Input';
+import { Product } from '../../types/product'
+import { Package, DollarSign, Hash, MapPin, Power, FileImage, Tag } from 'lucide-react';
 import { useAnimatedModal } from '@/hooks/useAnimatedModal';
+import { Select } from '../ui/inputs/Select';
+import { useCategorias } from '@/hooks/useCategoria';
+import { useTiposProducto } from '@/hooks/useTiposProducto';
+import toast from 'react-hot-toast';
+import SpinnerLoader from '../ui/SpinerLoader';
 
+// ACTUALIZADO: Schema con lógica condicional para pro_activo
 const productoSchema = z.object({
     pro_nom: z
         .string()
@@ -20,36 +25,60 @@ const productoSchema = z.object({
         .min(1, 'Los puntos deben ser mayor a 0')
         .max(99999, 'Los puntos no pueden exceder 99,999'),
 
-    pro_cantidad: z
+    pro_cantidad_disp: z
         .number()
         .min(0, 'La cantidad no puede ser negativa')
         .max(9999, 'La cantidad no puede exceder 9,999'),
 
-    pro_url_foto: z
+    pro_tyc: z
         .string()
-        .url('Debe ser una URL válida')
-        .optional()
-        .or(z.literal('')),
+        .min(5, 'Los términos y condiciones deben tener al menos 5 caracteres')
+        .max(500, 'Los términos y condiciones no pueden exceder 500 caracteres'),
 
-    res_id: z
+    cat_tip_id: z
         .number()
-        .min(1, 'Debe seleccionar un restaurante'),
+        .min(1, 'Debe seleccionar una categoría'),
 
     pro_tip_id: z
         .number()
-        .min(1, 'Debe seleccionar un tipo de producto')
+        .min(1, 'Debe seleccionar un tipo de producto'),
+
+    pro_activo: z
+        .number()
+        .min(0, 'Debe seleccionar un estado válido')
+        .max(1, 'Debe seleccionar un estado válido'),
+
+    foto: z
+        .any()
+        .optional()
+        .refine((files) => {
+            if (!files || files.length === 0) return true;
+            return files[0]?.size <= 5000000; // 5MB máximo
+        }, "El archivo debe ser menor a 5MB")
+        .refine((files) => {
+            if (!files || files.length === 0) return true;
+            return ['image/png', 'image/jpeg', 'image/jpg'].includes(files[0]?.type);
+        }, "Solo se permiten archivos PNG y JPG")
 });
 
 type FormData = z.infer<typeof productoSchema>;
 
+type SelectOption = {
+    value: number;
+    label: string;
+};
+
+interface ProductoForEdit extends Product {
+    cat_tip_id?: number;
+    pro_tip_id?: number;
+}
+
 interface ProductoFormModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: ProductoFormData) => Promise<void>;
-    producto?: Product;
+    onSubmit: (data: any) => Promise<void>; // Mantenemos any para compatibilidad
+    producto?: ProductoForEdit;
     isLoading?: boolean;
-    restaurantes?: Array<{ value: number; label: string }>;
-    tiposProducto?: Array<{ value: number; label: string }>;
 }
 
 export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
@@ -57,66 +86,177 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
     onClose,
     onSubmit,
     producto,
-    isLoading = false,
-    restaurantes = [],
-    tiposProducto = []
+    isLoading = false
 }) => {
     const isEditing = !!producto;
     const { isMounted, isClosing, handleClose } = useAnimatedModal(isOpen, onClose);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+    // Hooks para obtener datos
+    const { categorias, isLoading: loadingCategorias } = useCategorias();
+    const { tiposProducto, isLoading: loadingTipos } = useTiposProducto();
+
+    // NUEVA: Lógica para determinar si mostrar el select de estado
+    const shouldShowEstadoSelect = isEditing && producto?.pro_activo === 0;
 
     const {
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
         reset,
-        setValue
+        setValue,
+        watch
     } = useForm<FormData>({
         resolver: zodResolver(productoSchema),
         defaultValues: {
             pro_nom: '',
             pro_puntos_canje: 0,
-            pro_cantidad: 0,
-            pro_url_foto: '',
-            res_id: 0,
-            pro_tip_id: 0
+            pro_cantidad_disp: 0,
+            pro_tyc: '',
+            cat_tip_id: 0,
+            pro_tip_id: 0,
+            pro_activo: 1
         }
     });
+
+    const watchedFile = watch('foto');
 
     React.useEffect(() => {
         if (isOpen && producto) {
             setValue('pro_nom', producto.pro_nom);
             setValue('pro_puntos_canje', producto.pro_puntos_canje);
-            setValue('pro_cantidad', producto.pro_cantidad);
-            setValue('pro_url_foto', producto.pro_url_foto);
-            setValue('res_id', producto.res_id);
-            setValue('pro_tip_id', producto.pro_tip_id);
+            setValue('pro_cantidad_disp', producto.pro_cantidad_disp);
+            setValue('pro_tyc', producto.pro_tyc || ''); // Usar valor existente o vacío
+
+            // Para edición, buscar los IDs por los nombres
+            if (categorias && producto.cat_tip_nom) {
+                const categoria = categorias.find(cat => cat.cat_tip_nom === producto.cat_tip_nom);
+                if (categoria) {
+                    setValue('cat_tip_id', categoria.cat_tip_id);
+                }
+            }
+
+            if (tiposProducto && producto.pro_tip_nom) {
+                const tipo = tiposProducto.find(tipo => tipo.pro_tip_nom === producto.pro_tip_nom);
+                if (tipo) {
+                    setValue('pro_tip_id', tipo.pro_tip_id);
+                }
+            }
+
+            // LÓGICA ACTUALIZADA para pro_activo:
+            // Si pro_activo = 1, usar 1 por defecto y no mostrar select
+            // Si pro_activo = 0, mostrar select para permitir cambio
+            setValue('pro_activo', producto.pro_activo);
+
+            // Mostrar imagen actual si existe
+            if (producto.pro_url_foto) {
+                setPreviewImage(producto.pro_url_foto);
+            }
         } else if (isOpen && !producto) {
             reset();
+            setPreviewImage(null);
         }
-    }, [isOpen, producto, setValue, reset]);
+    }, [isOpen, producto, setValue, reset, categorias, tiposProducto]);
+
+    // Manejar preview de imagen seleccionada
+    React.useEffect(() => {
+        if (watchedFile && watchedFile.length > 0) {
+            const file = watchedFile[0];
+            const objectUrl = URL.createObjectURL(file);
+            setPreviewImage(objectUrl);
+
+            return () => URL.revokeObjectURL(objectUrl);
+        }
+    }, [watchedFile]);
 
     const handleFormSubmit = async (data: FormData) => {
         try {
-            await onSubmit(data);
+            if (!data.pro_nom || !data.pro_puntos_canje || !data.pro_cantidad_disp || !data.cat_tip_id || !data.pro_tip_id || !data.pro_tyc) {
+                throw new Error('Faltan campos obligatorios');
+            }
+
+            if (!isEditing) {
+                if (!data.foto || data.foto.length === 0) {
+                    throw new Error('La imagen es obligatoria para crear un producto');
+                }
+
+                const formData = new FormData();
+                formData.append('pro_nom', data.pro_nom);
+                formData.append('pro_puntos_canje', data.pro_puntos_canje.toString());
+                formData.append('pro_cantidad_disp', data.pro_cantidad_disp.toString());
+                formData.append('cat_tip_id', data.cat_tip_id.toString());
+                formData.append('pro_tip_id', data.pro_tip_id.toString());
+                formData.append('pro_tyc', data.pro_tyc);
+                formData.append('foto', data.foto[0]);
+
+                await onSubmit(formData);
+            } else {
+                // Para editar: Lógica condicional para manejar la foto
+                const hasNewPhoto = data.foto && data.foto.length > 0;
+
+                const updateData = {
+                    data: {
+                        pro_nom: data.pro_nom,
+                        pro_puntos_canje: data.pro_puntos_canje,
+                        pro_cantidad_disp: data.pro_cantidad_disp,
+                        cat_tip_id: data.cat_tip_id,
+                        pro_tip_id: data.pro_tip_id,
+                        pro_tyc: data.pro_tyc,
+                        pro_activo: producto!.pro_activo === 1 ? 1 : data.pro_activo,
+                    },
+                    foto: hasNewPhoto ? data.foto[0] : undefined
+                };
+                await onSubmit(updateData);
+            }
+
             reset();
+            setPreviewImage(null);
             handleClose();
+            toast.success(isEditing ? "Producto actualizado correctamente" : "Producto creado correctamente");
         } catch (error) {
-            console.error('Error al enviar formulario:', error);
+            console.error('❌ Error al enviar formulario:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            toast.error(errorMessage);
+            throw error;
         }
     };
+
+    // Transformar categorías a opciones
+    const categoriasOptions: SelectOption[] = [
+        { value: 0, label: 'Seleccione una categoría' },
+        ...categorias.map(categoria => ({
+            value: categoria.cat_tip_id,
+            label: categoria.cat_tip_nom
+        }))
+    ];
+
+    // Transformar tipos de producto a opciones
+    const tiposProductoOptions: SelectOption[] = [
+        { value: 0, label: 'Seleccione un tipo' },
+        ...tiposProducto.map(tipo => ({
+            value: tipo.pro_tip_id,
+            label: tipo.pro_tip_nom.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+        }))
+    ];
+
+    // Opciones para el estado del producto (solo para activar productos inactivos)
+    const estadoOptions: SelectOption[] = [
+        { value: 0, label: 'Inactivo' },
+        { value: 1, label: 'Activo' }
+    ];
 
     if (!isOpen && !isMounted) return null;
 
     return (
         <div
-            className={`fixed inset-0 z-9999 flex items-center justify-center transition-all duration-300 ${isMounted ? "opacity-100" : "opacity-0"
+            className={`fixed inset-0 z-9996 flex items-center justify-center transition-all duration-300 ${isMounted ? "opacity-100" : "opacity-0"
                 } ${isClosing ? "backdrop-blur-none bg-black/0" : "backdrop-blur-sm bg-black/60"}`}
             onClick={handleClose}
         >
             <div
                 className={`relative bg-[var(--violet)] text-[var(--white)] rounded-2xl p-8 w-[95%] max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl transition-all duration-300 ${isMounted && !isClosing
-                        ? "opacity-100 scale-100 translate-y-0"
-                        : "opacity-0 scale-95 translate-y-8"
+                    ? "opacity-100 scale-100 translate-y-0"
+                    : "opacity-0 scale-95 translate-y-8"
                     }`}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -134,6 +274,15 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
                             <h2 className="text-2xl font-bold mt-1">
                                 {isEditing ? 'Editar Producto' : 'Nuevo Producto'}
                             </h2>
+                            {/* INDICADOR del estado del producto */}
+                            {isEditing && (
+                                <p className="text-sm text-[var(--violet-200)] mt-1">
+                                    Estado actual: <span className={producto?.pro_activo === 1 ? 'text-green-300' : 'text-red-300'}>
+                                        {producto?.pro_activo === 1 ? 'Activo' : 'Inactivo'}
+                                    </span>
+                                    {producto?.pro_activo === 1 && ' (se mantendrá activo)'}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -149,7 +298,7 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
                 </div>
 
                 {/* Form */}
-                <div className="space-y-6">
+                <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* Información del Producto */}
                         <div className={`space-y-4 transition-all duration-500 delay-200 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
@@ -185,15 +334,30 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
                                 label="Cantidad en Stock *"
                                 variant="outline"
                                 type="number"
-                                {...register('pro_cantidad', { valueAsNumber: true })}
-                                error={errors.pro_cantidad?.message}
+                                {...register('pro_cantidad_disp', { valueAsNumber: true })}
+                                error={errors.pro_cantidad_disp?.message}
                                 placeholder="50"
                                 icon={<Hash size={16} />}
                                 allowOnlyNumbers={true}
                             />
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-[var(--violet-100)]">
+                                    Términos y Condiciones *
+                                </label>
+                                <textarea
+                                    {...register('pro_tyc')}
+                                    placeholder="Describe los términos y condiciones del producto..."
+                                    className="w-full px-3 py-2 bg-transparent border border-[var(--violet-300)] rounded-lg text-white placeholder-[var(--violet-300)] focus:border-[var(--violet-200)] focus:outline-none resize-none"
+                                    rows={4}
+                                />
+                                {errors.pro_tyc && (
+                                    <p className="text-red-300 text-sm">{errors.pro_tyc.message}</p>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Configuración */}
+                        {/* Configuración e Imagen */}
                         <div className={`space-y-4 transition-all duration-500 delay-300 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                             }`}>
                             <div className="flex items-center gap-2 border-b border-[var(--violet-300)] pb-3">
@@ -203,80 +367,88 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
                                 </h3>
                             </div>
 
-                            <Input
-                                label="URL de la Imagen"
-                                variant="outline"
-                                type="url"
-                                {...register('pro_url_foto')}
-                                error={errors.pro_url_foto?.message}
-                                placeholder="https://ejemplo.com/imagen.jpg"
-                                icon={<Image size={16} />}
+                            <Select
+                                label="Categoría *"
+                                icon={<Tag size={16} />}
+                                variant="modal"
+                                placeholder="Seleccione una categoría"
+                                options={categoriasOptions}
+                                {...register('cat_tip_id', { valueAsNumber: true })}
+                                error={errors.cat_tip_id?.message}
+                                disabled={loadingCategorias}
                             />
 
-                            {/* Selects usando el mismo estilo del modal de clientes */}
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--violet-100)] mb-2 flex items-center gap-2">
-                                    <MapPin size={16} />
-                                    Restaurante *
-                                </label>
-                                <div className="flex items-center rounded-md px-3 py-2 w-full focus-within:ring-2 border border-[var(--violet-200)] focus-within:ring-[var(--violet-200)] bg-transparent hover:border-white transition-all duration-200">
-                                    <div className="text-[var(--violet-200)] w-5 h-5 mr-2">
-                                        <MapPin size={16} />
+                            <Select
+                                label="Tipo de Producto *"
+                                icon={<Package size={16} />}
+                                variant="modal"
+                                placeholder="Seleccione un tipo"
+                                options={tiposProductoOptions}
+                                {...register('pro_tip_id', { valueAsNumber: true })}
+                                error={errors.pro_tip_id?.message}
+                                disabled={loadingTipos}
+                            />
+
+                            {/* LÓGICA CONDICIONAL: Solo mostrar estado cuando el producto está inactivo */}
+                            {shouldShowEstadoSelect && (
+                                <div className="space-y-2">
+                                    <div className="bg-[var(--violet-600)] border border-[var(--violet-400)] rounded-lg p-3">
+                                        <div className="flex items-center gap-2 text-yellow-300 mb-2">
+                                            <Power size={16} />
+                                            <span className="text-sm font-medium">Cambiar Estado</span>
+                                        </div>
+                                        <p className="text-xs text-[var(--violet-200)] mb-3">
+                                            Este producto está inactivo. Puedes activarlo seleccionando "Activo".
+                                        </p>
+                                        <Select
+                                            label="Estado del Producto *"
+                                            icon={<Power size={16} />}
+                                            variant="modal"
+                                            placeholder="Seleccione el estado"
+                                            options={estadoOptions}
+                                            {...register('pro_activo', { valueAsNumber: true })}
+                                            error={errors.pro_activo?.message}
+                                        />
                                     </div>
-                                    <select
-                                        {...register('res_id', { valueAsNumber: true })}
-                                        className="bg-transparent border-none outline-none text-lg font-semibold text-white w-full ml-2"
-                                    >
-                                        <option value={0} className="bg-[var(--violet-600)] text-[var(--violet-200)]">
-                                            Seleccione un restaurante
-                                        </option>
-                                        {restaurantes.map((restaurante) => (
-                                            <option
-                                                key={restaurante.value}
-                                                value={restaurante.value}
-                                                className="bg-[var(--violet-600)] text-white"
-                                            >
-                                                {restaurante.label}
-                                            </option>
-                                        ))}
-                                    </select>
                                 </div>
-                                {errors.res_id && (
-                                    <p className="mt-1 text-sm text-red-300">{errors.res_id.message}</p>
+                            )}
+
+                            {/* Input de archivo para imagen */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-[var(--violet-100)]">
+                                    <FileImage size={16} className="inline mr-2" />
+                                    Imagen del Producto {!isEditing && '*'}
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg"
+                                    {...register('foto')}
+                                    className="w-full px-3 py-2 bg-transparent border border-[var(--violet-300)] rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[var(--violet-200)] file:text-[var(--violet-600)] hover:file:bg-[var(--violet-100)]"
+                                />
+                                {errors.foto && (
+                                    <p className="text-red-300 text-sm">{errors.foto.message as string}</p>
                                 )}
+                                <p className="text-xs text-[var(--violet-300)]">
+                                    Formatos permitidos: PNG, JPG. Tamaño máximo: 5MB
+                                    {isEditing && ' (Opcional - dejar vacío para mantener imagen actual)'}
+                                </p>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--violet-100)] mb-2 flex items-center gap-2">
-                                    <Package size={16} />
-                                    Tipo de Producto *
-                                </label>
-                                <div className="flex items-center rounded-md px-3 py-2 w-full focus-within:ring-2 border border-[var(--violet-200)] focus-within:ring-[var(--violet-200)] bg-transparent hover:border-white transition-all duration-200">
-                                    <div className="text-[var(--violet-200)] w-5 h-5 mr-2">
-                                        <Package size={16} />
+                            {/* Preview de imagen */}
+                            {previewImage && (
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-[var(--violet-100)]">
+                                        Vista previa:
+                                    </label>
+                                    <div className="border border-[var(--violet-300)] rounded-lg p-2">
+                                        <img
+                                            src={previewImage}
+                                            alt="Preview"
+                                            className="w-full h-32 object-cover rounded"
+                                        />
                                     </div>
-                                    <select
-                                        {...register('pro_tip_id', { valueAsNumber: true })}
-                                        className="bg-transparent border-none outline-none text-lg font-semibold text-white w-full ml-2"
-                                    >
-                                        <option value={0} className="bg-[var(--violet-600)] text-[var(--violet-200)]">
-                                            Seleccione un tipo
-                                        </option>
-                                        {tiposProducto.map((tipo) => (
-                                            <option
-                                                key={tipo.value}
-                                                value={tipo.value}
-                                                className="bg-[var(--violet-600)] text-white"
-                                            >
-                                                {tipo.label}
-                                            </option>
-                                        ))}
-                                    </select>
                                 </div>
-                                {errors.pro_tip_id && (
-                                    <p className="mt-1 text-sm text-red-300">{errors.pro_tip_id.message}</p>
-                                )}
-                            </div>
+                            )}
                         </div>
                     </div>
 
@@ -284,6 +456,7 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
                     <div className={`flex justify-end space-x-4 pt-6 border-t border-[var(--violet-300)] transition-all duration-500 delay-400 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                         }`}>
                         <Button
+                            type="button"
                             variant="outline"
                             onClick={handleClose}
                             disabled={isSubmitting || isLoading}
@@ -293,13 +466,13 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
                         </Button>
 
                         <Button
-                            onClick={handleSubmit(handleFormSubmit)}
+                            type="submit"
                             variant="light"
-                            disabled={isSubmitting || isLoading}
+                            disabled={isSubmitting || isLoading || loadingCategorias || loadingTipos}
                         >
                             {isSubmitting || isLoading ? (
                                 <div className="flex items-center gap-2">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--violet-600)]"></div>
+                                    <SpinnerLoader />
                                     {isEditing ? 'Actualizando...' : 'Creando...'}
                                 </div>
                             ) : (
@@ -307,39 +480,13 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
                             )}
                         </Button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     );
 };
 
-export const ProductoFormModalContainer: React.FC<Omit<ProductoFormModalProps, 'restaurantes' | 'tiposProducto'> & {
-    customRestaurantes?: Array<{ value: number; label: string }>;
-    customTiposProducto?: Array<{ value: number; label: string }>;
-}> = ({
-    customRestaurantes,
-    customTiposProducto,
-    ...props
-}) => {
-        const restaurantesMock = customRestaurantes || [
-            { value: 1, label: 'Restaurante Central' },
-            { value: 2, label: 'Pizzería Don Juan' },
-            { value: 3, label: 'Café Boutique' },
-            { value: 4, label: 'Parrilla El Asador' }
-        ];
-
-        const tiposProductoMock = customTiposProducto || [
-            { value: 1, label: 'Bebida' },
-            { value: 2, label: 'Comida' },
-            { value: 3, label: 'Postre' },
-            { value: 4, label: 'Entrada' }
-        ];
-
-        return (
-            <ProductoFormModal
-                {...props}
-                restaurantes={restaurantesMock}
-                tiposProducto={tiposProductoMock}
-            />
-        );
-    };
+// Container simplificado
+export const ProductoFormModalContainer: React.FC<ProductoFormModalProps> = (props) => {
+    return <ProductoFormModal {...props} />;
+};

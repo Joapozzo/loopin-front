@@ -1,6 +1,5 @@
-// types/credencial.ts
-import { Restaurant } from './restaurant';
-import { Client } from './client';
+import { Sucursal } from './sucursal'; 
+import { ClienteCompleto } from './clienteCompleto'; 
 
 export interface Credencial {
     id: number;
@@ -8,6 +7,6 @@ export interface Credencial {
     fechaAlta: string;
     restaurantId: number;
     clientId: number;
-    restaurant: Restaurant;
-    client: Client;
+    restaurant: Sucursal;
+    client: ClienteCompleto;
 }

@@ -7,3 +7,4 @@ enum TipoCodigoEnum {
 export interface TipoCodigo {
     tip_cod: TipoCodigoEnum;
 }
+

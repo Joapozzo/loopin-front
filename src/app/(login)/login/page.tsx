@@ -1,16 +1,20 @@
+// pages/login/page.tsx
 "use client";
 
-import { useState } from "react";
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Facebook, Instagram, Star, Heart } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Star, Heart } from "lucide-react";
 import Button from "@/components/ui/buttons/Button";
 import Input from "@/components/ui/inputs/Input";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
+import GmailIcon from "@/components/icons/Gmail";
+import SpinnerLoader from "@/components/ui/SpinerLoader";
+import Image from "next/image";
 
 export default function LoginPage() {
-    const { login } = useAuth();
     const router = useRouter();
+    const { isAuthenticated, isLoading: authLoading, login, userRole } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
@@ -18,6 +22,26 @@ export default function LoginPage() {
         password: ""
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false); // ✅ NUEVO ESTADO
+
+    useEffect(() => {
+        if (!authLoading && isAuthenticated) {
+            console.log("👤 Usuario ya autenticado, redirigiendo...");
+            setIsRedirecting(true); // ✅ ACTIVAR LOADER DE REDIRECCIÓN
+
+            // ✅ Marcar que es un login reciente para mostrar bienvenida
+            sessionStorage.setItem('recentLogin', 'true');
+
+            setTimeout(() => {
+                if (userRole === 'cliente') {
+                    router.push("/home");
+                }
+                if (userRole === 'encargado') {
+                    router.push("/res/dashboard");
+                }
+            }, 1000); // ✅ Pequeño delay para mejor UX
+        }
+    }, [isAuthenticated, authLoading, router, userRole]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({
@@ -26,7 +50,7 @@ export default function LoginPage() {
         });
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!formData.email || !formData.password) {
             toast.error("Completá todos los campos.");
             return;
@@ -34,37 +58,80 @@ export default function LoginPage() {
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
-            console.log("entre aca");
             toast.error("Ingresá un email válido.");
             return;
         }
 
         setIsLoading(true);
+        const toastId = toast.loading("Iniciando sesión...");
 
-        setTimeout(() => {
-            // Simulación: solo acepta este usuario
-            const isValidUser =
-                formData.email === "test@demo.com" && formData.password === "123456";
+        try {
+            // ========== USAR EL AUTHCONTEXT PARA LOGIN ==========
+            await login(formData.email, formData.password);
 
-            setIsLoading(false);
+            // ✅ CAMBIAR: En lugar de success toast, mostrar loader de redirección
+            toast.success("Sesión iniciada correctamente", { id: toastId, duration: 1000 });
 
-            if (isValidUser) {
-                const token = "fake-jwt-token";
-                const role = "3";
-                login(token, role)
-                toast.success("Inicio de sesión exitoso");
-                router.push("/home");
+            // ✅ Marcar login reciente para bienvenida en destino
+            sessionStorage.setItem('recentLogin', 'true');
+
+            setIsRedirecting(true);
+
+            // La redirección se maneja automáticamente en el useEffect
+
+        } catch (error: any) {
+            console.error("❌ Error durante el login:", error);
+
+            if (error.code) {
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        toast.error("No existe una cuenta con este email", { id: toastId });
+                        break;
+                    case 'auth/wrong-password':
+                    case 'auth/invalid-credential':
+                        toast.error("Contraseña incorrecta", { id: toastId });
+                        break;
+                    case 'auth/invalid-email':
+                        toast.error("Email inválido", { id: toastId });
+                        break;
+                    case 'auth/user-disabled':
+                        toast.error("Esta cuenta ha sido deshabilitada", { id: toastId });
+                        break;
+                    case 'auth/too-many-requests':
+                        toast.error("Demasiados intentos fallidos. Intentá más tarde", { id: toastId });
+                        break;
+                    case 'auth/network-request-failed':
+                        toast.error("Error de conexión. Verificá tu internet", { id: toastId });
+                        break;
+                    default:
+                        toast.error("Error de autenticación: " + error.message, { id: toastId });
+                }
             } else {
-                toast.error("Usuario o contraseña incorrectos");
+                toast.error("Error inesperado: " + error.message, { id: toastId });
             }
-        }, 1500);
+        } finally {
+            setIsLoading(false);
+        }
     };
+
     const goToLandingPage = () => {
         router.push("/");
     }
 
     const goToRegisterPage = () => {
         router.push("/register");
+    }
+
+    if (authLoading) {
+        return <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
+            <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />;
+        </div>
+    }
+
+    if (isRedirecting) {
+        return <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
+            <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />;
+        </div>
     }
 
     return (
@@ -146,16 +213,18 @@ export default function LoginPage() {
                         {/* Header */}
                         <div className="text-center mb-6">
                             <div className="flex items-center justify-center mb-3">
-                                <img
-                                    src="./logos/logo-violet.svg"
+                                <Image
+                                    src="./logos/logo.svg"
                                     alt="Logo Loopin"
                                     className="h-8 w-auto text-[var(--violet)]"
+                                    width={120}
+                                    height={40}
                                 />
                             </div>
-                            <h2 className="text-2xl font-bold text-gray-700 mb-2">
+                            <h2 className="text-2xl font-semibold text-[var(--violet)] mb-2">
                                 Iniciá sesión
                             </h2>
-                            <p className="text-gray-600">Accedé a tu cuenta</p>
+                            {/* <p className="text-gray-600">Accedé a tu cuenta</p> */}
                         </div>
 
                         {/* Formulario */}
@@ -237,22 +306,13 @@ export default function LoginPage() {
                         </div>
 
                         {/* Login social */}
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3">
                             <Button
                                 variant="outline"
                                 className="p-2 text-sm flex items-center flex-col justify-center"
                                 rounded="lg"
                             >
-                                <Facebook size={18} className="mr-2" />
-                                Facebook
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className="p-2 text-sm flex items-center flex-col justify-center"
-                                rounded="lg"
-                            >
-                                <Instagram size={18} className="mr-2" />
-                                Instagram
+                                <GmailIcon />
                             </Button>
                         </div>
 

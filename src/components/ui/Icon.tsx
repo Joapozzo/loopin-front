@@ -1,21 +1,31 @@
 'use client';
 
-import { Home, User, Settings, Search, ArrowDownWideNarrow, Funnel, Bell, Plus, IdCard, Heart, Ticket, Check, LogOut } from "lucide-react";
-import { ReactElement, useRef } from "react";
+import { 
+    Home, User, Settings, Search, ArrowDownWideNarrow, Funnel, Bell, Plus, 
+    IdCard, Heart, Ticket, Check, LogOut, Minus, ArrowUpWideNarrow 
+} from "lucide-react";
+import { ReactElement } from "react";
 
 interface IconProps {
     name: string;
-    colorVar?: string;
-    hoverColor?: string;
+    backgroundColor?: string;
+    iconColor?: string;
     onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
     filled?: boolean;
 }
 
-export default function Icon({ name, colorVar, hoverColor, onClick, filled }: IconProps) {
+export default function Icon({ 
+    name, 
+    backgroundColor = "var(--color-principal)", 
+    iconColor = "white",
+    onClick, 
+    filled 
+}: IconProps) {
+    
     const iconProps = {
-        color: "var(--white)",
+        color: iconColor,
         strokeWidth: 2,
-        fill: filled ? "var(--white)" : "none", // Cambiamos aquí
+        fill: filled ? iconColor : "none",
     };
 
     const icons: { [key: string]: ReactElement } = {
@@ -32,37 +42,36 @@ export default function Icon({ name, colorVar, hoverColor, onClick, filled }: Ic
         ticket: <Ticket {...iconProps} />,
         check: <Check {...iconProps} />,
         logout: <LogOut {...iconProps} />,
+        up: <ArrowUpWideNarrow {...iconProps} />,
+        minus: <Minus {...iconProps} />,
     };
-
-    const backgroundColor = colorVar ? `var(${colorVar})` : `var(--violet-200)`;
-    const iconHoverColor = colorVar ? `var(${colorVar})` : "var(--violet-200)";
-    const hoverBg = hoverColor ? `var(${hoverColor})` : "transparent";
-
-    const spanRef = useRef<HTMLSpanElement>(null);
 
     return (
         <div
-            className="rounded-xl p-2 border-1 transition-all duration-300"
+            className="rounded-lg p-2 transition-all duration-200 cursor-pointer"
             style={{
                 backgroundColor,
-                borderColor: backgroundColor,
-                cursor: "pointer",
+                border: `1px solid ${backgroundColor}`,
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
             }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = hoverBg;
-                if (spanRef.current) {
-                    spanRef.current.style.color = iconHoverColor;
-                }
+                e.currentTarget.style.opacity = "0.7"; // Opacidad del 70%
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = backgroundColor;
-                if (spanRef.current) {
-                    spanRef.current.style.color = "var(--white)";
-                }
+                e.currentTarget.style.opacity = "1"; // Vuelve a opacidad completa
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
             }}
             onClick={onClick}
         >
-            <span ref={spanRef} style={{ color: "var(--white)" }}>
+            <span style={{ 
+                color: iconColor,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+            }}>
                 {icons[name] || <div>Icono no encontrado</div>}
             </span>
         </div>

@@ -12,7 +12,7 @@ interface GradientCardProps {
 export default function GradientCard({ children, className = '', delay = 0 }: GradientCardProps) {
     return (
         <motion.div 
-            className={`bg-gradient-to-r from-[var(--violet-50)] to-[var(--violet-100)] rounded-2xl p-6 border border-[var(--violet-200)]/20 shadow-sm ${className}`}
+            className={`mb-4 bg-[var(--violet-50)] rounded-2xl p-6 border border-[var(--violet-200)] ${className}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay }}

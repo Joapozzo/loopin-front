@@ -1,90 +1,196 @@
-import { useEffect, useState } from "react";
-import { createCodigo } from "@/api/codigosFetch";
-import { Codigo } from "@/types/codigo";
+import { useState, useCallback, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { CuponService } from "@/services/cupon.service";
+import { GenerarCodigoResponse, CodigoPromocional } from "@/types/codigos";
 import { Product } from "@/types/product";
-import { useClienteStore } from "@/stores/useClienteCompleto";
-import { useCodigosStore } from "@/stores/codigosStore";
-import { useTarjetaStore } from "@/stores/useTarjetaStore";
 
-const generarStringAleatorio = (longitud: number) =>
-    Math.random().toString(36).substring(2, 2 + longitud).toUpperCase();
+// Instancia única del servicio
+const cuponService = new CuponService();
 
-const generarCodigoPublico = (nombre: string, puntos: number) => {
-    const clean = nombre.replace(/\s/g, "").substring(0, 3).toUpperCase();
-    return `${clean}${puntos}${generarStringAleatorio(2)}`;
-};
+export const useCodigoGenerado = (
+    producto: Product | null,
+    tipo: 'activos' | 'inactivos' | 'ambos' = 'activos',
+    // Nuevos parámetros para códigos promocionales
+    neg_id?: number | null,
+    suc_id?: number | null,
+    enableCodigosPromocionales: boolean = false
+) => {
+    const [codigoResponse, setCodigoResponse] = useState<GenerarCodigoResponse | null>(null);
+    const queryClient = useQueryClient();
 
-export const useCodigoGenerado = (producto: Product | null) => {
-    const cliente = useClienteStore((s) => s.cliente);
-    const { codigos } = useCodigosStore();
-    const { tarjetas, fetchTarjetasByCliente } = useTarjetaStore();
-    const [codigoGenerado, setCodigoGenerado] = useState<Codigo | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    // Query para códigos activos (por defecto)
+    const {
+        data: codigosActivos = [],
+        isLoading: loadingActivos,
+        error: errorCodigosQuery,
+        refetch: refetchActivos
+    } = useQuery({
+        queryKey: ['codigos', 'activos'],
+        queryFn: async () => await cuponService.getCodigosActivos(),
+        enabled: tipo === 'activos' || tipo === 'ambos',
+        staleTime: 2 * 60 * 1000,
+        gcTime: 5 * 60 * 1000,
+        retry: 2,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+    });
 
-    useEffect(() => {
-        const generarOCargarCodigo = async () => {
-            if (!producto || !cliente) return;
+    // Query para códigos inactivos (solo cuando se necesite)
+    const {
+        data: codigosInactivos = [],
+        isLoading: loadingInactivos,
+        refetch: refetchInactivos
+    } = useQuery({
+        queryKey: ['codigos', 'inactivos'],
+        queryFn: async () => await cuponService.getCodigosInactivos(),
+        enabled: tipo === 'inactivos' || tipo === 'ambos',
+        staleTime: 2 * 60 * 1000,
+        gcTime: 5 * 60 * 1000,
+        retry: 2,
+    });
 
-            setLoading(true);
-            setError(null);
-
-            const yaExiste = codigos.find(
-                (c) => c.pro_id === producto.pro_id && c.tar_id && c.res_id === producto.res_id
-            );
-
-            if (yaExiste) {
-                setCodigoGenerado(yaExiste);
-                setLoading(false);
-                return;
+    // 🆕 Query para códigos promocionales por negocio y sucursal
+    const {
+        data: codigosPromocionales = [],
+        isLoading: loadingPromocionales,
+        error: errorPromocionales,
+        refetch: refetchPromocionales
+    } = useQuery({
+        queryKey: ['codigos_promocionales', neg_id, suc_id],
+        queryFn: async () => {
+            if (!neg_id || !suc_id) {
+                throw new Error('neg_id y suc_id son requeridos');
             }
+            return await cuponService.getCodigosPromocionPorNegocioSucursal(neg_id, suc_id);
+        },
+        enabled: enableCodigosPromocionales && !!neg_id && !!suc_id,
+        staleTime: 2 * 60 * 1000,
+        gcTime: 5 * 60 * 1000,
+        retry: 2,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+    });
 
-            // Cargar tarjetas del cliente si no están cargadas
-            if (tarjetas.length === 0) {
-                await fetchTarjetasByCliente(cliente.cli_id);
-            }
-
-            // Buscar la tarjeta asociada del cliente para este restaurante
-            const tarjetaCoincidente = tarjetas.find(
-                (tar) => tar.res_id === producto.res_id && tar.cli_id === cliente.cli_id
-            );
-
-            if (!tarjetaCoincidente) {
-                setError("No se encontró una tarjeta asociada al producto");
-                setLoading(false);
-                return;
-            }
-
-            // Crear fechas con JavaScript nativo
-            const fechaActual = new Date();
-            const fechaExpiracion = new Date();
-            fechaExpiracion.setDate(fechaActual.getDate() + 7); // Sumar 7 días
-
-            const nuevoCodigo = {
-                tar_id: tarjetaCoincidente.tar_id,
+    // Mutation para generar código
+    const generarCodigoMutation = useMutation({
+        mutationFn: async (producto: Product) => {
+            const response = await cuponService.generarCodigo({
                 pro_id: producto.pro_id,
-                cod_nro_ticket: generarStringAleatorio(6),
-                cod_publico: generarCodigoPublico(producto.pro_nom, producto.pro_puntos_canje),
-                cod_est: "1",
-                cod_fecha_emision: fechaActual.toISOString(),
-                cod_fecha_canje: null,
-                usu_id: null,
-                res_id: producto.res_id,
-                cod_fecha_expiracion: fechaExpiracion.toISOString(),
-            };
+                neg_id: producto.neg_id,
+                suc_id: producto.suc_id,
+            });
+            return response;
+        },
+        onSuccess: (data, productoUsado) => {
+            setCodigoResponse(data);
+            // Recargar códigos después de generar uno nuevo
+            queryClient.invalidateQueries({ queryKey: ['codigos', 'activos'] });
+            // Invalidar tarjetas para actualizar puntos después del canje
+            queryClient.invalidateQueries({ queryKey: ['tarjetas'] });
 
-            try {
-                const creado = await createCodigo(nuevoCodigo);
-                setCodigoGenerado(creado.codigo);
-            } catch (e) {
-                setError("Error al crear el código");
-            } finally {
-                setLoading(false);
+            // Marcar que se hizo un canje para la animación de descuento
+            if (productoUsado) {
+                queryClient.setQueryData(['ultimo_canje_puntos'], {
+                    puntos_descontados: productoUsado.pro_puntos_canje,
+                    timestamp: Date.now()
+                });
             }
-        };
+        },
+        onError: (error) => {
+            console.error('Error al generar código:', error);
+        }
+    });
 
-        generarOCargarCodigo();
-    }, [producto, cliente, codigos, tarjetas]);
+    // ✅ EFECTO CORREGIDO: Auto-generar código cuando se detecta un producto
+    useEffect(() => {
+        if (producto) {
+            setCodigoResponse(null); // Limpiar código anterior
+            // 🚀 AUTO-GENERAR código para el nuevo producto
+            generarCodigoMutation.mutate(producto);
+        }
+    }, [producto?.pro_id]); // Solo cuando cambia el ID del producto
 
-    return { codigo: codigoGenerado, loading, error };
+    const cargarCodigosCliente = useCallback(async () => {
+        await Promise.all([
+            refetchActivos(),
+            refetchInactivos()
+        ]);
+    }, [refetchActivos, refetchInactivos]);
+
+    // 🆕 Función para cargar códigos promocionales
+    const cargarCodigosPromocionales = useCallback(async () => {
+        await refetchPromocionales();
+    }, [refetchPromocionales]);
+
+    // Función para generar código manualmente (cuando el usuario confirme)
+    const generarCodigoManual = useCallback(async (producto: Product) => {
+        if (!producto) return;
+        setCodigoResponse(null); // Limpiar código anterior
+        await generarCodigoMutation.mutateAsync(producto);
+    }, [generarCodigoMutation]);
+
+    // Función para regenerar código
+    const regenerarCodigo = useCallback(async () => {
+        if (!producto) return;
+        setCodigoResponse(null); // Limpiar código anterior
+        await generarCodigoMutation.mutateAsync(producto);
+    }, [producto, generarCodigoMutation]);
+
+    // Función para limpiar código (usar al cerrar modal)
+    const limpiarCodigo = useCallback(() => {
+        setCodigoResponse(null);
+    }, []);
+
+    // Función para invalidar queries (para usar cuando se cierre el modal)
+    const invalidarCodigos = useCallback(() => {
+        queryClient.invalidateQueries({ queryKey: ['codigos', 'activos'] });
+        queryClient.invalidateQueries({ queryKey: ['codigos', 'inactivos'] });
+        // También invalidar códigos promocionales
+        queryClient.invalidateQueries({ queryKey: ['codigos_promocionales'] });
+        // También invalidar tarjetas para asegurar que los puntos estén actualizados
+        queryClient.invalidateQueries({ queryKey: ['tarjetas'] });
+        // Limpiar código actual para próxima generación
+        setCodigoResponse(null);
+    }, [queryClient]);
+
+    const loadingCodigos = tipo === 'activos' ? loadingActivos :
+        tipo === 'inactivos' ? loadingInactivos :
+            loadingActivos || loadingInactivos
+
+    const getCodigoByCodigo = useCallback(async (codigo: string): Promise<any | null> => {
+        try {
+            const codigoEncontrado = codigosActivos.find(
+                (cod: any) => cod.cod_publico === codigo && cod.cod_est === '1'
+            );
+            return codigoEncontrado || null;
+        } catch (error) {
+            console.error('Error al obtener código:', error);
+            return null;
+        }
+    }, [codigosActivos]);
+
+    return {
+        // Generación de códigos (mantener nombres originales)
+        codigoResponse,
+        loading: generarCodigoMutation.isPending,
+        error: generarCodigoMutation.error?.message || null,
+        regenerarCodigo,
+        generarCodigoManual, // NUEVA FUNCIÓN MANUAL
+
+        // Códigos del cliente (mantener nombres originales)
+        codigosActivos,
+        codigosInactivos,
+        loadingCodigos,
+        errorCodigos: errorCodigosQuery?.message || null,
+        cargarCodigosCliente,
+        invalidarCodigos,
+        limpiarCodigo,
+        getCodigoByCodigo,
+
+        // 🆕 Códigos promocionales por negocio y sucursal
+        codigosPromocionales,
+        loadingPromocionales,
+        errorPromocionales: errorPromocionales?.message || null,
+        cargarCodigosPromocionales,
+    };
 };
