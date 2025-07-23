@@ -218,22 +218,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = async () => {
         try {
             await signOut(auth);
-            localStorage.removeItem("comercio_encargado_data");
-            // El cleanup se hará automáticamente en onAuthStateChanged
+            localStorage.clear();
         } catch (error) {
             console.error("❌ Error en logout:", error);
-            // Limpiar manualmente si Firebase falla
-            localStorage.removeItem("token");
-            localStorage.removeItem("role");
-            localStorage.removeItem("userProfile");
-            localStorage.removeItem("comercio_encargado_data");
-            localStorage.removeItem("restaurante-seleccionado-storage");
+            
+            localStorage.clear();
             setToken(null);
             setUser(null);
             setUserRole(null);
             setUserProfile(null);
         }
     };
+
 
     const refreshToken = async (): Promise<string | null> => {
         if (user) {

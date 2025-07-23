@@ -1,4 +1,3 @@
-// pages/login/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -22,14 +21,12 @@ export default function LoginPage() {
         password: ""
     });
     const [isLoading, setIsLoading] = useState(false);
-    const [isRedirecting, setIsRedirecting] = useState(false); // ✅ NUEVO ESTADO
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
     useEffect(() => {
         if (!authLoading && isAuthenticated) {
-            console.log("👤 Usuario ya autenticado, redirigiendo...");
-            setIsRedirecting(true); // ✅ ACTIVAR LOADER DE REDIRECCIÓN
+            setIsRedirecting(true);
 
-            // ✅ Marcar que es un login reciente para mostrar bienvenida
             sessionStorage.setItem('recentLogin', 'true');
 
             setTimeout(() => {
@@ -39,7 +36,7 @@ export default function LoginPage() {
                 if (userRole === 'encargado') {
                     router.push("/res/dashboard");
                 }
-            }, 1000); // ✅ Pequeño delay para mejor UX
+            }, 1000);
         }
     }, [isAuthenticated, authLoading, router, userRole]);
 
@@ -66,18 +63,13 @@ export default function LoginPage() {
         const toastId = toast.loading("Iniciando sesión...");
 
         try {
-            // ========== USAR EL AUTHCONTEXT PARA LOGIN ==========
             await login(formData.email, formData.password);
 
-            // ✅ CAMBIAR: En lugar de success toast, mostrar loader de redirección
             toast.success("Sesión iniciada correctamente", { id: toastId, duration: 1000 });
 
-            // ✅ Marcar login reciente para bienvenida en destino
             sessionStorage.setItem('recentLogin', 'true');
 
             setIsRedirecting(true);
-
-            // La redirección se maneja automáticamente en el useEffect
 
         } catch (error: any) {
             console.error("❌ Error durante el login:", error);

@@ -1,6 +1,6 @@
 "use client";
-
-import React, { useState } from 'react';
+import React from 'react';
+import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
     Users,
@@ -29,16 +29,27 @@ import { useComercioData, useComercioEncargado } from '@/hooks/useComercioEncarg
 
 const ManagerSidebar = () => {
     const router = useRouter();
-
+    const pathname = usePathname();
     const { logout } = useAuth();
     const { nombreCompleto } = useUserProfile();
-
     const { loading, error } = useComercioEncargado();
     const { comercioData } = useComercioData();
-
-    const [activeItem, setActiveItem] = useState('dashboard');
     const { isExpanded, toggleSidebar } = useSidebar();
+    
+    // Función para obtener el item activo basado en la ruta
+    const getActiveItemFromPath = (path: string) => {
+        if (path === '/res' || path === '/res/dashboard') return 'dashboard';
+        if (path.startsWith('/res/clientes')) return 'clientes';
+        if (path.startsWith('/res/productos')) return 'productos';
+        if (path.startsWith('/res/codigos')) return 'codigos';
+        if (path.startsWith('/res/ventas')) return 'ventas';
+        if (path.startsWith('/res/canjes')) return 'canjes';
+        if (path.startsWith('/res/reportes')) return 'reportes';
+        if (path.startsWith('/res/configuracion')) return 'configuracion';
+        return 'dashboard';
+    };
 
+    const activeItem = getActiveItemFromPath(pathname);
 
     const { clientesTotales } = useClientes({
         initialPageSize: 15,
@@ -109,18 +120,6 @@ const ManagerSidebar = () => {
             badge: managerData.stats.canjesPendientes,
             badgeColor: "bg-[var(--rose)]",
         },
-        // {
-        //     id: "reportes",
-        //     label: "Reportes",
-        //     icon: <BarChart3 size={22} />,
-        //     description: "Análisis y estadísticas",
-        // },
-        // {
-        //     id: 'configuracion',
-        //     label: 'Configuración',
-        //     icon: <Settings size={22} />,
-        //     description: 'Ajustes del restaurante'
-        // }
     ];
 
     const goToPage = (id: string) => () => {
@@ -131,20 +130,19 @@ const ManagerSidebar = () => {
         logout();
     }
 
+    // Función dummy para el onClick del MenuItem (ya no necesaria)
+    const handleMenuClick = () => {};
+
     return (
         <aside className={`${isExpanded ? 'w-80' : 'w-20'} fixed top-0 left-0 z-9900 h-screen bg-[var(--violet)] border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 overflow-y-auto`}>
-
             {/* Header del Restaurante */}
             <div className={`${isExpanded ? 'p-6' : 'p-3'} border-b border-white/20`}>
                 {isExpanded ? (
-                    // Vista expandida
                     <>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-2xl shadow-md backdrop-blur-sm flex-shrink-0">
                                 <img src={managerData.restaurant.logo} alt={managerData.restaurant.name} />
-                                {/* {managerData.restaurant.logo} */}
                             </div>
-
                             <div className="flex-1 min-w-0">
                                 <p className="text-white/80 text-sm">Panel de</p>
                                 <h2 className="text-white text-xl font-bold truncate">
@@ -157,7 +155,6 @@ const ManagerSidebar = () => {
                                     <span>{managerData.restaurant.category}</span>
                                 </div>
                             </div>
-
                             <button
                                 onClick={toggleSidebar}
                                 className="p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors flex-shrink-0"
@@ -165,8 +162,6 @@ const ManagerSidebar = () => {
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
                         </div>
-
-                        {/* Info del encargado y acciones rápidas */}
                         <div className="space-y-3">
                             <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
                                 <div className="flex items-center space-x-2 text-sm text-white/80 mb-2">
@@ -177,7 +172,6 @@ const ManagerSidebar = () => {
                                     Encargado: <span className="font-medium text-white">{managerData.name}</span>
                                 </div>
                             </div>
-
                             <div className="flex gap-2">
                                 <button className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-white text-sm hover:bg-white/20 transition-all duration-200 backdrop-blur-sm border border-white/10">
                                     <Settings size={16} />
@@ -191,12 +185,10 @@ const ManagerSidebar = () => {
                         </div>
                     </>
                 ) : (
-                    // Vista minimizada
                     <div className="flex flex-col items-center space-y-3">
                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-md backdrop-blur-sm">
                             <img src={managerData.restaurant.logo} alt={managerData.restaurant.name} />
                         </div>
-
                         <button
                             onClick={toggleSidebar}
                             className="p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors w-10 h-10 flex items-center justify-center"
@@ -238,7 +230,7 @@ const ManagerSidebar = () => {
                             <MenuItem
                                 item={item}
                                 isActive={activeItem === item.id}
-                                onClick={setActiveItem}
+                                onClick={handleMenuClick}
                                 isExpanded={isExpanded}
                             />
                         </li>

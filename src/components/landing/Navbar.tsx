@@ -121,7 +121,8 @@ const Navbar = ({ onContactClick }: NavbarProps) => {
                                         className="nav-link relative px-4 py-2 font-medium group"
                                     >
                                         {item}
-                                        <span className="absolute bottom-0 left-0 w-0 h-0.5 transition-all duration-300 group-hover:w-full bg-gradient-to-r from-[var(--violet)] to-[var(--rose)]"></span>
+                                        <span className="absolute bottom-0 left-0 w-0 h-0.2 transition-all duration-300 bg-gradient-to-r from-[var(--violet)] to-[var(--rose)]"></span>
+
                                     </button>
                                 )
                             )}
@@ -133,7 +134,7 @@ const Navbar = ({ onContactClick }: NavbarProps) => {
                             >
                                 Contactanos
                             </Button>
-                            <Link href="/login" className="p-2 rounded-full bg-[var(--violet-100)] hover:bg-[var(--violet-50)] transition-colors duration-200 text-[var(--violet)]">
+                            <Link href="/login" className="p-2 rounded-full transition-colors duration-200 text-[var(--violet)] hover:text-[var(--violet-200)]">
                                 <LogIn />
                             </Link>
                         </div>
@@ -201,7 +202,7 @@ const Navbar = ({ onContactClick }: NavbarProps) => {
                                     >
                                         Contactanos
                                     </Button>
-                                    <Link href={"/login"} className="w-full">                                    
+                                    <Link href={"/login"} className="w-full">
                                         <Button
                                             variant="secondary"
                                             size="md"

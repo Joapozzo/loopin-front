@@ -93,7 +93,7 @@ export default function RegisterStep2() {
 
         try {
             // Obtener token y UID de localStorage
-            const token = localStorage.getItem('token'); // Cambiado de 'authToken' a 'token'
+            const token = localStorage.getItem('authToken');
             const firebaseUID = localStorage.getItem('firebaseUID');
 
             if (!token || !firebaseUID) {
@@ -121,7 +121,7 @@ export default function RegisterStep2() {
             };
 
             const res = await createUser(dataToSave, token);
-
+            
             if (!res.ok) {
                 // Si falla el registro en BD, eliminar usuario de Firebase
                 const currentUser = auth.currentUser;
@@ -129,7 +129,7 @@ export default function RegisterStep2() {
                     await currentUser.delete();
                 }
 
-                // Limpiar localStorage COMPLETAMENTE
+                // Limpiar localStorage COMPLETAMENTE (incluyendo token y uid)
                 localStorage.clear();
 
                 toast.error("Error al completar registro: " + (res.data?.error || "Intenta nuevamente"), { id: toastId });
