@@ -26,16 +26,22 @@ import { useClientes } from '@/hooks/useClientes';
 import { useProductos } from '@/hooks/useProductos';
 import { useUserProfile } from '@/hooks/userProfile';
 import { useComercioData, useComercioEncargado } from '@/hooks/useComercioEncargado';
+import { useCupones } from '@/hooks/useCupones';
+import { useVentas } from '@/hooks/useVentas';
+import { useCanjes } from '@/hooks/useCanjes';
 
 const ManagerSidebar = () => {
     const router = useRouter();
     const pathname = usePathname();
     const { logout } = useAuth();
-    const { nombreCompleto } = useUserProfile();
-    const { loading, error } = useComercioEncargado();
-    const { comercioData } = useComercioData();
+
+    const { nombreCompleto, isLoading: profileLoading } = useUserProfile();
+    const { loading: comercioLoading, error } = useComercioEncargado();
+    const { comercioData, loading: comercioDataLoading } = useComercioData();
     const { isExpanded, toggleSidebar } = useSidebar();
-    
+
+    const isLoadingData = profileLoading || comercioLoading || comercioDataLoading;
+
     // Función para obtener el item activo basado en la ruta
     const getActiveItemFromPath = (path: string) => {
         if (path === '/res' || path === '/res/dashboard') return 'dashboard';
@@ -58,22 +64,28 @@ const ManagerSidebar = () => {
         initialPageSize: 15,
     });
 
+    const { comprasTotales } = useVentas()
+    const { canjesTotales } = useCanjes({
+        tipoVista: 'encargado'
+    })
+
     const managerData = {
-        name: nombreCompleto,
+        name: nombreCompleto || "Cargando...",
         restaurant: {
-            name: comercioData?.suc_nom,
+            name: comercioData?.suc_nom || "Cargando restaurante...",
             logo: "/logos/logo-chez.svg",
-            address: comercioData?.suc_dir,
+            address: comercioData?.suc_dir || "Cargando dirección...",
             rating: 4.8,
-            tel: comercioData?.suc_cel,
+            tel: comercioData?.suc_cel || "---",
             category: "Parrilla Argentina"
         },
         stats: {
             clientesAdheridos: clientesTotales,
             ventasHoy: 15,
-            canjesPendientes: 3,
+            canjesTotales: canjesTotales,
             puntosOtorgados: 12450,
             productosTotales: productosTotales,
+            comprasTotales: comprasTotales
         }
     };
 
@@ -103,21 +115,21 @@ const ManagerSidebar = () => {
             label: "Cupones",
             icon: <Ticket size={22} />,
             description: "Registro de compras y ventas",
-            badge: managerData.stats.ventasHoy,
+            // badge: managerData.stats.ventasHoy,
         },
         {
             id: "ventas",
             label: "Ventas",
             icon: <ShoppingBag size={22} />,
             description: "Registro de compras y ventas",
-            badge: managerData.stats.ventasHoy,
+            badge: managerData.stats.comprasTotales,
         },
         {
             id: "canjes",
             label: "Canjes",
             icon: <Gift size={22} />,
             description: "Confirmar canjes de puntos",
-            badge: managerData.stats.canjesPendientes,
+            badge: managerData.stats.canjesTotales,
             badgeColor: "bg-[var(--rose)]",
         },
     ];
@@ -131,7 +143,7 @@ const ManagerSidebar = () => {
     }
 
     // Función dummy para el onClick del MenuItem (ya no necesaria)
-    const handleMenuClick = () => {};
+    const handleMenuClick = () => { };
 
     return (
         <aside className={`${isExpanded ? 'w-80' : 'w-20'} fixed top-0 left-0 z-9900 h-screen bg-[var(--violet)] border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 overflow-y-auto`}>

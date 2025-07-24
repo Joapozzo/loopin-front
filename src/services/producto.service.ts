@@ -33,7 +33,6 @@ export class ProductoService {
         };
     }
 
-    // Método existente para obtener todos los productos (admin)
     async getProductos(
         pagination: PaginationParams,
         sorting: SortingParams = {},
@@ -64,10 +63,10 @@ export class ProductoService {
         return this.api.get(`${this.endpoints.getSucursal}?${params}`);
     }
 
-    // AGREGAR este método en ProductoService
+
     async getProductosBySucursalId(
-        sucursalId: number,
         negocioId: number,
+        sucursalId: number,
         pagination: PaginationParams,
         sorting: SortingParams = {},
         filters: FilterParams = {}

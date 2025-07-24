@@ -5,7 +5,7 @@ import MobileLayout from "@/components/layouts/MobileLayout";
 import GradientCard from "@/components/GradientCard";
 import Section from "@/components/Section";
 import BackButton from "@/components/ui/buttons/BackButton";
-import { Ticket, Gift, Star } from "lucide-react";
+import { Ticket, Gift } from "lucide-react";
 import CuponModal from "@/components/modals/CuponModal";
 
 export default function Cupones() {

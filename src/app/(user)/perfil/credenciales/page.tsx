@@ -18,7 +18,7 @@ export default function Page() {
         return (
             <>
                 <div className="flex items-center justify-center min-h-[50vh]">
-                    <SpinnerLoader/>
+                    <SpinnerLoader />
                 </div>
             </>
         );
@@ -77,7 +77,9 @@ export default function Page() {
                         <BackButton />
                     </div>
                     <div className="flex items-center flex-col gap-4 w-full">
-                        <h2 className="text-3xl font-bold text-white">Tus credenciales</h2>
+                        <h2 className="text-3xl font-bold text-white">
+                            Tus credenciales
+                        </h2>
                     </div>
                 </HeroLayout>
             </div>
@@ -103,7 +105,8 @@ export default function Page() {
                             </div>
                             <div className="flex-1">
                                 <h2 className="text-[var(--violet)] text-2xl font-medium mb-1">
-                                    {tarjetas.length} Credencial{tarjetas.length !== 1 ? 'es' : ''}
+                                    {tarjetas.length} Credencial
+                                    {tarjetas.length !== 1 ? "es" : ""}
                                 </h2>
                                 <p className="text-gray-600 text-sm">
                                     Tarjetas de fidelidad activas en restaurantes adheridos
@@ -125,7 +128,7 @@ export default function Page() {
             {/* Contenido con padding solo en móvil */}
             <MobileLayout>
                 <Section>
-                    <div className="flex flex-wrap gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                         {tarjetas.map((t) => (
                             <CredencialRest tarjeta={t} cliente={userData} key={t.tar_id} />
                         ))}

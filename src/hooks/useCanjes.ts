@@ -168,7 +168,7 @@ export const useCanjes = (config: UseCanjesConfig = {}): UseCanjesReturn => {
     } = useQuery({
         queryKey: ['canjes-encargado'],
         queryFn: () => canjeService.getHistorialCanjesEncargado(),
-        enabled: enabled && (tipoVista === 'encargado' || tipoVista === 'cliente'),
+        enabled: enabled && (initialTipoVista === 'encargado' || tipoVista === 'encargado'),
         staleTime: autoRefresh ? refreshInterval : 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 2,

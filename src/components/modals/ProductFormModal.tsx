@@ -223,7 +223,6 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
 
     // Transformar categorías a opciones
     const categoriasOptions: SelectOption[] = [
-        { value: 0, label: 'Seleccione una categoría' },
         ...categorias.map(categoria => ({
             value: categoria.cat_tip_id,
             label: categoria.cat_tip_nom
@@ -232,7 +231,6 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
 
     // Transformar tipos de producto a opciones
     const tiposProductoOptions: SelectOption[] = [
-        { value: 0, label: 'Seleccione un tipo' },
         ...tiposProducto.map(tipo => ({
             value: tipo.pro_tip_id,
             label: tipo.pro_tip_nom.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')

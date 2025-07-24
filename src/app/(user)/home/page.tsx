@@ -39,8 +39,6 @@ export default function Page() {
         </Section>
         <CuponPuntosComponent/>
       </MobileLayout>
-      <CodigoPromocionalModal />
-      <CuponModal />
     </>
   );
 }

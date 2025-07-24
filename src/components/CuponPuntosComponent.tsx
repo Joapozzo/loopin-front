@@ -27,10 +27,10 @@ const CuponPuntosComponent = () => {
         setSuccessData(null);
     });
 
-    const {
-        canjearCodigoPuntos,
-        isCanjeandoPuntos
-    } = useCanjes();
+    const { canjearCodigoPuntos, isCanjeandoPuntos } = useCanjes({
+        enabled: true,
+        tipoVista: 'cliente'
+    });
 
     const openModal = () => {
         setIsModalOpen(true);

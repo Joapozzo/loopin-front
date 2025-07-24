@@ -33,7 +33,7 @@ export default function Product({ product, puntos, hasRestaurantSelected }: Prod
     const alcanza = puntos >= pro_puntos_canje;
     const puntosRestantes = Math.abs(puntos - pro_puntos_canje);
 
-    const imagenFallback = "../food/hamburguesa.png";
+    const imagenFallback = "/food/hamburguesa.png";
 
     return (
         <div className="w-full h-96 flex flex-col items-center rounded-2xl shadow-md bg-[var(--white-100)] p-4 gap-3">
@@ -41,13 +41,13 @@ export default function Product({ product, puntos, hasRestaurantSelected }: Prod
                 {suc_nom}
             </span>
 
-            <div className="w-full h-32 flex items-center justify-center">
+            <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-lg bg-gray-50">
                 <Image
                     src={public_url || imagenFallback}
                     alt="Producto"
-                    className="max-w-full max-h-full object-contain"
-                    width={200}
-                    height={200}
+                    className="w-full h-full object-cover"
+                    width={400}
+                    height={400}
                 />
             </div>
 

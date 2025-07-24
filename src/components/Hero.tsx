@@ -88,12 +88,11 @@ export default function Hero() {
 
     const tarjetaActual = useMemo(() => {
         const tarjeta = restauranteSeleccionado
-            ? getTarjetaBySucursal(restauranteSeleccionado.suc_id)
+            ? getTarjetaBySucursal(restauranteSeleccionado.suc_id, restauranteSeleccionado.neg_id)
             : null;
         return tarjeta;
     }, [restauranteSeleccionado, getTarjetaBySucursal]);
 
-    // Lazy loading progresivo mejorado
     useEffect(() => {
         const loadProgressively = async () => {
             // 1. Cargar datos del usuario (300ms)
@@ -114,7 +113,6 @@ export default function Hero() {
         loadProgressively();
     }, [cliente, clienteLoading, clienteError, marcasSlider]);
 
-    // Cargar select cuando sucursales estén listas
     useEffect(() => {
         if (sucursales.length > 0 && !sucursalesLoading && !sucursalesError) {
             setTimeout(() => {
@@ -123,22 +121,21 @@ export default function Hero() {
         }
     }, [sucursales, sucursalesLoading, sucursalesError]);
 
-    // Cargar header y cards de restaurante cuando esté seleccionado
     useEffect(() => {
         if (restauranteSeleccionado && tarjetaActual && !tarjetasLoading) {
             setTimeout(() => {
-                setLoadedSections(prev => ({ 
-                    ...prev, 
+                setLoadedSections(prev => ({
+                    ...prev,
                     restaurantHeader: true,
-                    desktopCards: true 
+                    desktopCards: true
                 }));
             }, 1200);
         } else {
             // Reset cuando se deselecciona
-            setLoadedSections(prev => ({ 
-                ...prev, 
+            setLoadedSections(prev => ({
+                ...prev,
                 restaurantHeader: false,
-                desktopCards: false 
+                desktopCards: false
             }));
         }
     }, [restauranteSeleccionado, tarjetaActual, tarjetasLoading]);
@@ -161,7 +158,7 @@ export default function Hero() {
 
     // Preparar datos para el Select
     const restaurantData = sucursales.map((sucursal) => ({
-        value: sucursal.suc_id,
+        value: `${sucursal.suc_id}-${sucursal.neg_id}`,
         label: sucursal.suc_nom,
     }));
 
@@ -172,7 +169,10 @@ export default function Hero() {
             return;
         }
 
-        const sucursal = sucursales.find(s => Number(s.suc_id) === Number(restaurantId));
+        const [sucId, negId] = String(restaurantId).split('-');
+        const sucursal = sucursales.find(s =>
+            Number(s.suc_id) === Number(sucId) && Number(s.neg_id) === Number(negId)
+        );
         setRestauranteSeleccionado(sucursal || null);
 
         if (sucursal) {
@@ -186,9 +186,7 @@ export default function Hero() {
 
     // Funciones de navegación
     const goToCredencials = () => router.push('perfil/credenciales');
-    const closeSesion = () => logout();
 
-    // Condiciones de error crítico que requieren no mostrar nada
     const hasCriticalError = clienteError || !cliente;
 
     if (hasCriticalError) {
@@ -229,10 +227,10 @@ export default function Hero() {
                         </motion.div>
                     )}
                 </AnimatePresence>
-                
+
                 <HeroLayout className={`${loadedSections.restaurantHeader ? 'pt-24' : ''} transition-all duration-300`}>
                     {/* Header con usuario */}
-                    <motion.div 
+                    <motion.div
                         className="flex items-center flex-col justify-between w-full gap-2"
                         {...createStaggeredVariant(0)}
                     >
@@ -274,7 +272,7 @@ export default function Hero() {
                                 {loadedSections.userData ? (
                                     <>
                                         <Icon name="ticket" onClick={goToCredencials} backgroundColor='var(--violet-200)' />
-                                        <Icon name="logout" onClick={closeSesion} backgroundColor='var(--rose)' />
+                                        <Icon name="logout" onClick={logout} backgroundColor='var(--rose)' />
                                     </>
                                 ) : (
                                     <>
@@ -287,7 +285,7 @@ export default function Hero() {
                     </motion.div>
 
                     {/* Sección de marcas */}
-                    <motion.div 
+                    <motion.div
                         className="flex items-start justify-between w-full flex-col gap-5"
                         {...createStaggeredVariant(1)}
                     >
@@ -327,7 +325,7 @@ export default function Hero() {
                             </>
                         )}
                     </motion.div>
-                    
+
                     {/* Select de restaurante */}
                     <motion.div
                         className='w-full'
@@ -340,7 +338,7 @@ export default function Hero() {
                                 options={restaurantData}
                                 icon={<Store size={20} />}
                                 placeholder="Seleccionar comercio"
-                                value={restauranteSeleccionado?.suc_id || ""}
+                                value={restauranteSeleccionado ? `${restauranteSeleccionado.suc_id}-${restauranteSeleccionado.neg_id}` : ""}
                                 onCustomChange={handleRestaurantChange}
                             />
                         ) : sucursalesLoading ? (
@@ -359,7 +357,7 @@ export default function Hero() {
 
             {/* VERSIÓN ESCRITORIO */}
             <div className="hidden md:block">
-                <motion.div 
+                <motion.div
                     className="space-y-6"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -390,7 +388,7 @@ export default function Hero() {
                                                 <motion.div
                                                     key={`${marca.id}-${i}`}
                                                     className="w-40 flex-shrink-0 px-4"
-                                                    whileHover={{ 
+                                                    whileHover={{
                                                         scale: 1.02,
                                                         transition: { duration: 0.2 }
                                                     }}
@@ -445,41 +443,43 @@ export default function Hero() {
                         </GradientCard>
                     </motion.div>
 
-                    {/* Card de selección de comercio */}
-                    <motion.div {...createStaggeredVariant(1)}>
-                        <GradientCard delay={0}>
-                            <div className="mb-4">
-                                <h2 className="text-[var(--violet)] text-xl font-bold mb-2 flex items-center gap-2">
-                                    <Store size={24} />
-                                    Seleccionar Comercio
-                                </h2>
-                                <p className="text-gray-600 text-sm">
-                                    Elige el comercio donde quieres acumular puntos
-                                </p>
-                            </div>
+                    {
+                        loadedSections.select &&
+                        <motion.div {...createStaggeredVariant(1)}>
+                            <GradientCard delay={0}>
+                                <div className="mb-4">
+                                    <h2 className="text-[var(--violet)] text-xl font-bold mb-2 flex items-center gap-2">
+                                        <Store size={24} />
+                                        Seleccionar Comercio
+                                    </h2>
+                                    <p className="text-gray-600 text-sm">
+                                        Elige el comercio donde quieres acumular puntos
+                                    </p>
+                                </div>
 
-                            <div className="bg-white/70 rounded-xl p-4 border border-white/60">
-                                {loadedSections.select ? (
-                                    <Select
-                                        label="Seleccione un comercio"
-                                        name="restaurante"
-                                        options={restaurantData}
-                                        icon={<Store size={20} />}
-                                        placeholder="Seleccionar comercio"
-                                        value={restauranteSeleccionado?.suc_id || ""}
-                                        onCustomChange={handleRestaurantChange}
-                                        variant='desktop'
-                                    />
-                                ) : sucursalesLoading ? (
-                                    <SkeletonBox className="w-full h-12" />
-                                ) : sucursalesError ? (
-                                    <div className="w-full p-4 bg-red-500/20 rounded-lg border border-red-500/30">
-                                        <p className="text-red-600 text-sm">Error al cargar comercios</p>
-                                    </div>
-                                ) : null}
-                            </div>
-                        </GradientCard>
-                    </motion.div>
+                                <div className="bg-white/70 rounded-xl p-4 border border-white/60">
+                                    {loadedSections.select ? (
+                                        <Select
+                                            label="Seleccione un comercio"
+                                            name="restaurante"
+                                            options={restaurantData}
+                                            icon={<Store size={20} />}
+                                            placeholder="Seleccionar comercio"
+                                            value={restauranteSeleccionado ? `${restauranteSeleccionado.suc_id}-${restauranteSeleccionado.neg_id}` : ""}
+                                            onCustomChange={handleRestaurantChange}
+                                            variant='desktop'
+                                        />
+                                    ) : sucursalesLoading ? (
+                                        <SkeletonBox className="w-full h-12" />
+                                    ) : sucursalesError ? (
+                                        <div className="w-full p-4 bg-red-500/20 rounded-lg border border-red-500/30">
+                                            <p className="text-red-600 text-sm">Error al cargar comercios</p>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </GradientCard>
+                        </motion.div>
+                    }
 
                     {/* Cards de información del restaurante */}
                     {loadedSections.desktopCards && restauranteSeleccionado && tarjetaActual && (
@@ -488,7 +488,7 @@ export default function Hero() {
                             {...createStaggeredVariant(2)}
                         >
                             <motion.div
-                                whileHover={{ 
+                                whileHover={{
                                     y: -2,
                                     transition: { duration: 0.2 }
                                 }}
@@ -502,7 +502,7 @@ export default function Hero() {
 
                             <motion.div
                                 className="bg-[var(--violet-50)] text-[var(--violet)] rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-200"
-                                whileHover={{ 
+                                whileHover={{
                                     y: -2,
                                     transition: { duration: 0.2 }
                                 }}
@@ -520,7 +520,7 @@ export default function Hero() {
 
                             <motion.div
                                 className="bg-[var(--violet-50)] text-[var(--violet)] rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-200"
-                                whileHover={{ 
+                                whileHover={{
                                     y: -2,
                                     transition: { duration: 0.2 }
                                 }}

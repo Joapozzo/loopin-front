@@ -26,22 +26,22 @@ export default function OffMainContainer({ neg_id, suc_id }: OffMainContainerPro
 
     if (errorPromocionales) {
         return (
-            <div className="flex items-center justify-center w-full p-8">
-                <p className="text-red-500">Error al cargar códigos promocionales: {errorPromocionales}</p>
+            <div className="flex items-start justify-start w-full">
+                <p className="text-red-500 text-start">Error al cargar códigos promocionales: {errorPromocionales}</p>
             </div>
         );
     }
 
     if (codigosPromocionales.length === 0) {
         return (
-            <div className="flex items-center justify-center w-full p-8">
-                <p className="text-gray-500">No hay códigos promocionales disponibles</p>
+            <div className="flex items-start justify-start w-full pb-8">
+                <p className="text-gray-500 text-start">No hay códigos promocionales disponibles</p>
             </div>
         );
     }
 
     return (
-        <div className="flex items-start justify-between w-full gap-4 overflow-x-auto pt-2 pb-2 overflow-visible">
+        <div className="flex items-start justify-start w-full gap-4 overflow-x-auto pt-2 pb-2 overflow-visible">
             {codigosPromocionales.map((codigoPromocional, index) => (
                 <MainOff key={`${codigoPromocional.cod_prom_publico}-${index}`} codigoPromocional={codigoPromocional} />
             ))}

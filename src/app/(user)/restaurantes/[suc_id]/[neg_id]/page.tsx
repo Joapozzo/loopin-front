@@ -12,25 +12,22 @@ import PuntosCounter from "@/components/PuntosCounter";
 import { useParams } from "next/navigation";
 import { Bell, CreditCard, Heart, MapPin } from "lucide-react";
 import { useSucursalesCliente } from "@/hooks/useSucursales";
-import SpinnerLoader from "@/components/ui/SpinerLoader";
+import { useTarjetas } from "@/hooks/useTarjetas";
 
 export default function Page() {
     const { suc_id, neg_id } = useParams();
     const { getSucursalById, loading } = useSucursalesCliente();
     const { isAdherida } = useSucursalesCliente();
-
+    const { getTarjetaBySucursal } = useTarjetas();
     const sucursal = getSucursalById(Number(suc_id), Number(neg_id));
     
     if (loading || !sucursal) {
         return <div className="text-red">Loading...</div>;
     }
 
-    const restauranteIsAdherido = isAdherida(sucursal.suc_id, sucursal.neg_id);
+    const tarjetaActual = getTarjetaBySucursal(sucursal.suc_id, sucursal.neg_id);
 
-    // Datos mock para el contador - reemplazar por datos reales
-    const tarjetaActual = {
-        tar_puntos_disponibles: 150 // Ejemplo de puntos
-    };
+    const restauranteIsAdherido = isAdherida(sucursal.suc_id, sucursal.neg_id);
 
     return (
         <>
@@ -155,18 +152,18 @@ export default function Page() {
                 {/* Información del restaurante - Solo en móvil */}
                 <div className="md:hidden">
                     <Section>
+                        <div className="flex flex-col w-full">
+                            {/* <TextShadow>{restaurante.category}</TextShadow> */}
+                            <h2 className="text-2xl font-bold text-[var(--violet)] mt-4">
+                                {sucursal.suc_nom}
+                            </h2>
+                        </div>
                         <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 flex items-center justify-center shadow-sm border border-white/60 hover:shadow-md hover:border-[var(--rose)] transition-all duration-200 min-h-[6rem]">
                             <img
                                 src="/logos/logo-chez.svg"
                                 alt="logo"
                                 className="w-20 h-20 object-contain"
                             />
-                        </div>
-                        <div className="flex flex-col w-full">
-                            {/* <TextShadow>{restaurante.category}</TextShadow> */}
-                            <h2 className="text-3xl font-bold text-[var(--violet)] mt-4">
-                                {sucursal.suc_nom}
-                            </h2>
                         </div>
                     </Section>
                 </div>
@@ -199,7 +196,7 @@ export default function Page() {
 
                 <Section>
                     <ProductsContainer
-                        negocioId={sucursal.neg_id}
+                        negocioId={Number(neg_id)}
                         sucursalId={Number(suc_id)}
                     />
                 </Section>

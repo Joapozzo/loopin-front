@@ -23,10 +23,10 @@ const labelColorStyles = {
 };
 
 const inputTextStyles = {
-    default: "text-[var(--violet)] placeholder:text-[var(--violet-200)]",
-    error: "text-[var(--violet)] placeholder:text-[var(--violet-200)]",
-    success: "text-[var(--violet)] placeholder:text-[var(--violet-200)]",
-    outline: "text-white placeholder:text-[var(--violet-200)]",
+    default: "text-[var(--violet)] placeholder:text-[var(--violet)] placeholder:opacity-50",
+    error: "text-[var(--violet)] placeholder:text-[var(--violet)] placeholder:opacity-50",
+    success: "text-[var(--violet)] placeholder:text-[var(--violet)] placeholder:opacity-50",
+    outline: "text-white placeholder:text-white placeholder:opacity-50",
 };
 
 const Input = forwardRef<HTMLInputElement, InputProps>(({
@@ -76,7 +76,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
                 ${variantStyles[finalVariant]} 
                 ${className}`}>
                 {icon && (
-                    <div className={`w-5 h-5 mr-2 flex items-center justify-center ${variant === 'outline' ? 'text-[var(--violet-200)]' : 'text-[var(--violet)]'}`}>
+                    <div className={`w-5 h-5 mr-2 flex items-center justify-center ${variant === 'outline' ? 'text-[var(--violet-100)]' : 'text-[var(--violet)]'}`}>
                         {icon}
                     </div>
                 )}
@@ -87,7 +87,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
                     id={inputId}
                     placeholder={placeholder}
                     onKeyDown={handleKeyDown}
-                    className={`bg-transparent border-none outline-none text-lg font-semibold placeholder:font-normal w-full ${inputTextStyles[finalVariant]}
+                    className={`bg-transparent border-none outline-none text-lg font-medium placeholder:font-normal w-full ${inputTextStyles[finalVariant]}
                         autofill:bg-transparent autofill:shadow-[inset_0_0_0px_1000px_transparent] 
                         autofill:[-webkit-text-fill-color:var(--violet)] 
                         autofill:focus:bg-transparent autofill:focus:shadow-[inset_0_0_0px_1000px_transparent] 

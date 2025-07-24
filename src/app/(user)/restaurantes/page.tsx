@@ -77,7 +77,7 @@ export default function Page() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 w-full">
                             {filteredRestaurantes.map((rest) => (
                                 <CardRest
-                                    key={rest.suc_id}
+                                    key={rest.suc_id-rest.neg_id}
                                     restaurant={rest}
                                     selected
                                 />

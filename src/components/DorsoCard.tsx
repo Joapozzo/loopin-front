@@ -33,8 +33,8 @@ export default function DorsoCard({
         >
             <div className="flex w-full items-center justify-between">
                 <div className="flex flex-col items-start justify-center">
-                    <p className="text-xl font-semibold">{clientNombre}</p>
-                    <p className="text-md text-[var(--foreground)]">{dni}</p>
+                    <p className="text-xl font-semibold text-white">{clientNombre}</p>
+                    <p className="text-md text-white">{dni}</p>
                 </div>
                 <button
                     onClick={onToggle}
@@ -49,7 +49,6 @@ export default function DorsoCard({
                 </button>
             </div>
             
-            {/* REEMPLAZAR la sección de puntos con código */}
             <div className="flex flex-col items-start w-full">
                 <h3 className="text-5xl font-bold text-[var(--white)] mb-2">{tarjeta_nro}</h3>
                 <div className="flex items-center gap-1 text-[var(--white)]/80">
@@ -60,7 +59,7 @@ export default function DorsoCard({
 
             <div className="flex flex-col items-end justify-center w-full">
                 <p className="text-md font-semibold">Fecha de alta</p>
-                <p className="text-sm text-[var(--foreground)]">{fechaAlta}</p>
+                <p className="text-sm text-white">{fechaAlta}</p>
             </div>
         </div>
     );

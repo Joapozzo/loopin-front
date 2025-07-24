@@ -9,6 +9,7 @@ import ProductsContainerSkeleton from "./skeletons/ProductsContainerSkeleton";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useTarjetas } from "@/hooks/useTarjetas";
 import { useRestauranteSeleccionadoStore } from "@/stores/useRestaurantSeleccionado";
+import { useQueryClient } from "@tanstack/react-query";
 
 const INITIAL_PRODUCTS_COUNT = 6;
 const LOAD_MORE_COUNT = 6;
@@ -17,7 +18,6 @@ interface ProductsContainerProps {
     sucursalId?: number;
     negocioId?: number;
 }
-
 
 export default function ProductsContainer({ sucursalId, negocioId }: ProductsContainerProps) {
     const searchTerm = useSearchStore((s) => s.searchTerm);
@@ -28,35 +28,36 @@ export default function ProductsContainer({ sucursalId, negocioId }: ProductsCon
 
     const restauranteSeleccionado = useRestauranteSeleccionadoStore(s => s.restauranteSeleccionado);
 
-    // Estado para controlar cuántos productos mostrar
     const [visibleCount, setVisibleCount] = useState(INITIAL_PRODUCTS_COUNT);
 
-    // Refs para evitar loops infinitos
     const lastSearchTerm = useRef<string>("");
     const lastCategoryId = useRef<number | null>(null);
+
+    const queryClient = useQueryClient();
 
     const {
         tableConfig,
         setSearch,
         setCategory
-    } = useProductos({ 
-        mode: (negocioId && sucursalId) ? 'by_sucursal_id' : 'general',
-        negocioId,
-        sucursalId 
+    } = useProductos({
+        mode: (negocioId && sucursalId) ? 'by_sucursal_id' :
+            restauranteSeleccionado ? 'by_sucursal_id' : 'general',
+        negocioId: negocioId || restauranteSeleccionado?.neg_id,    // ✅ Props primero
+        sucursalId: sucursalId || restauranteSeleccionado?.suc_id   // ✅ Props primero
     });
+
     const {
         getTarjetaBySucursal,
     } = useTarjetas();
 
     const tarjetaActual = useMemo(() => {
         return restauranteSeleccionado
-            ? getTarjetaBySucursal(restauranteSeleccionado.suc_id)
+            ? getTarjetaBySucursal(restauranteSeleccionado.suc_id, restauranteSeleccionado.neg_id)
             : null;
     }, [restauranteSeleccionado, getTarjetaBySucursal]);
 
     const { data: productos, loading, error } = tableConfig;
-    
-    // Reset visible count cuando cambien los filtros
+
     useEffect(() => {
         setVisibleCount(INITIAL_PRODUCTS_COUNT);
     }, [searchTerm, selectedCategoryId, pointsSortOrder, restaurantSelected]);
@@ -75,18 +76,24 @@ export default function ProductsContainer({ sucursalId, negocioId }: ProductsCon
         }
     }, [selectedCategoryId, setCategory]);
 
+    useEffect(() => {
+        if (restauranteSeleccionado) {
+            queryClient.invalidateQueries({
+                queryKey: ['productos']
+            });
+        }
+    }, [restauranteSeleccionado?.suc_id, queryClient]);
+
     const getPuntosForProduct = (product: ProductoType) => {
         return tarjetaActual?.tar_puntos_disponibles || 0;
     };
 
     const processedProducts = useMemo(() => {
-        // 1. Filtrar por restaurante seleccionado
         let filteredProducts = productos;
         if (restaurantSelected) {
             filteredProducts = productos.filter(product => product.suc_id === restaurantSelected.suc_id);
         }
 
-        // 2. Aplicar ordenamiento por puntos si está activo
         if (pointsSortOrder !== 'none') {
             filteredProducts = [...filteredProducts].sort((a, b) => {
                 const puntosA = a.pro_puntos_canje;
@@ -103,17 +110,14 @@ export default function ProductsContainer({ sucursalId, negocioId }: ProductsCon
         return filteredProducts;
     }, [productos, restaurantSelected, pointsSortOrder, tarjetas]);
 
-    // Productos visibles según el estado actual
     const visibleProducts = useMemo(() => {
         return processedProducts.slice(0, visibleCount);
     }, [processedProducts, visibleCount]);
 
-    // Información de paginación
     const totalProducts = processedProducts.length;
     const hasMore = visibleCount < totalProducts;
     const canShowLess = visibleCount > INITIAL_PRODUCTS_COUNT;
 
-    // Handlers para los botones
     const handleLoadMore = () => {
         setVisibleCount(prev => Math.min(prev + LOAD_MORE_COUNT, totalProducts));
     };
@@ -121,7 +125,6 @@ export default function ProductsContainer({ sucursalId, negocioId }: ProductsCon
     const handleShowLess = () => {
         setVisibleCount(INITIAL_PRODUCTS_COUNT);
 
-        // Buscar el elemento por ID y hacer scroll hacia FilterCategory
         const filterSection = document.getElementById('filter-category-section');
         if (filterSection) {
             filterSection.scrollIntoView({

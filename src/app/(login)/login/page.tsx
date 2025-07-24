@@ -16,14 +16,14 @@ import { signInWithEmailAndPassword, sendEmailVerification, signInWithPopup } fr
 export default function LoginPage() {
     const router = useRouter();
     // ✅ Incluir emailNotVerified en la destructuración
-    const { 
-        isAuthenticated, 
-        isLoading: authLoading, 
-        userRole, 
-        login, 
-        needsOnboarding, 
+    const {
+        isAuthenticated,
+        isLoading: authLoading,
+        userRole,
+        login,
+        needsOnboarding,
         emailNotVerified, // 🆕 Nuevo flag
-        loginWithGoogle 
+        loginWithGoogle
     } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
@@ -146,7 +146,7 @@ export default function LoginPage() {
                         toast.error("Error de conexión. Verificá tu internet", { id: toastId });
                         break;
                     default:
-                        toast.error("Error de autenticación: " + error.message, { id: toastId });
+                        toast.error("Error de autenticación: " + error.message , { id: toastId });
                 }
             } else {
                 toast.error("Error inesperado: " + error.message, { id: toastId });
@@ -156,7 +156,6 @@ export default function LoginPage() {
         }
     };
 
-    // 🆕 Función para manejar login con Google
     const handleGoogleLogin = async () => {
         setIsGoogleLoading(true);
         const toastId = toast.loading("Iniciando sesión con Google...");
@@ -172,11 +171,9 @@ export default function LoginPage() {
 
             console.log("🔍 Usuario de Google:", user.email);
 
+            // 🆕 NO HACER SIGNOUT - Usar directamente el usuario de Google
             // Los emails de Google ya están verificados automáticamente
-            // Cerrar sesión temporal para usar nuestro sistema de auth
-            await auth.signOut();
-
-            // Usar nuestro hook de login con Google
+            // Usar nuestro hook de login con Google DIRECTAMENTE
             if (loginWithGoogle) {
                 await loginWithGoogle(user);
             } else {
@@ -294,17 +291,23 @@ export default function LoginPage() {
                                         Email no verificado
                                     </h3>
                                     <p className="text-gray-600 text-sm">
-                                        Necesitas verificar tu email antes de poder iniciar sesión.
+                                        Necesitas verificar tu email antes de poder iniciar
+                                        sesión.
                                     </p>
                                     <p className="text-gray-600 text-sm mt-2">
-                                        Email: <span className="font-semibold">{formData.email || unverifiedUser?.email}</span>
+                                        Email:{" "}
+                                        <span className="font-semibold">
+                                            {formData.email || unverifiedUser?.email}
+                                        </span>
                                     </p>
                                 </div>
 
                                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                     <p className="text-xs text-yellow-700">
-                                        1. Revisá tu bandeja de entrada (y spam)<br />
-                                        2. Hacé clic en el enlace de verificación<br />
+                                        1. Revisá tu bandeja de entrada (y spam)
+                                        <br />
+                                        2. Hacé clic en el enlace de verificación
+                                        <br />
                                         3. Volvé acá e iniciá sesión nuevamente
                                     </p>
                                 </div>
@@ -394,7 +397,7 @@ export default function LoginPage() {
                 <div className="flex items-center p-6">
                     <div className="w-full max-w-md mx-auto">
                         {/* Header */}
-                        <div className="text-center mb-6">
+                        <div className="text-center mb-2">
                             <div className="flex items-center justify-center mb-3">
                                 <Image
                                     src="./logos/logo.svg"
@@ -446,7 +449,10 @@ export default function LoginPage() {
                                 </div>
                             </div>
                             <div className="text-right">
-                                <Link className="text-[var(--violet)] hover:text-[var(--violet-200)] text-sm font-semibold transition-colors" href="/forgot-password">
+                                <Link
+                                    className="text-[var(--violet)] hover:text-[var(--violet-200)] text-sm font-semibold transition-colors"
+                                    href="/forgot-password"
+                                >
                                     ¿Olvidaste tu contraseña?
                                 </Link>
                             </div>
@@ -489,7 +495,7 @@ export default function LoginPage() {
                             <Button
                                 onClick={handleGoogleLogin}
                                 variant="outline"
-                                className="p-3 text-sm flex items-center justify-center space-x-2 hover:bg-gray-50 transition-colors"
+                                className="p-3 text-sm flex items-center justify-center space-x-2 hover:text-white transition-colors font-medium"
                                 rounded="lg"
                                 disabled={isGoogleLoading}
                                 fullWidth
@@ -501,8 +507,8 @@ export default function LoginPage() {
                                     </div>
                                 ) : (
                                     <>
-                                        <GmailIcon />
-                                        <span className="font-medium">Continuar con Google</span>
+                                        <GmailIcon className="mr-2" />
+                                        Continuar con Google
                                     </>
                                 )}
                             </Button>

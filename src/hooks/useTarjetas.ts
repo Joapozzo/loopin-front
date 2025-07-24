@@ -18,7 +18,7 @@ export interface UseTarjetasReturn {
     error: string | null;
     refresh: () => Promise<void>;
     getTarjetaById: (id: number) => Tarjeta | undefined;
-    getTarjetaBySucursal: (sucId: number) => Tarjeta | undefined;
+    getTarjetaBySucursal: (sucId: number, negId: number) => Tarjeta | undefined;
     createTarjeta: (suc_id: number, neg_id: number) => Promise<void>;
     totalPuntosDisponibles: number;
     totalTarjetas: number;
@@ -66,9 +66,14 @@ export const useTarjetas = (config: UseTarjetasConfig = {}): UseTarjetasReturn =
         return tarjetas.find(tarjeta => tarjeta.tar_id === id);
     }, [tarjetas]);
 
-    const getTarjetaBySucursal = useCallback((sucId: number): Tarjeta | undefined => {
-        return tarjetas.find(tarjeta => tarjeta.suc_id === sucId);
-    }, [tarjetas]);
+    const getTarjetaBySucursal = useCallback(
+        (sucId: number, negId: number): Tarjeta | undefined => {
+            return tarjetas.find(
+                (tarjeta) => tarjeta.suc_id === sucId && tarjeta.neg_id === negId
+            );
+        },
+        [tarjetas]
+    );
 
     // Calcular total de puntos disponibles
     // Ahora todas las tarjetas que vienen ya están filtradas por estado

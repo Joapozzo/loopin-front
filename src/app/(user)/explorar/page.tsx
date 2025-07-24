@@ -90,7 +90,7 @@ export default function Page() {
                         {sucursalesFiltradas.length > 0 ? (
                             sucursalesFiltradas.map((sucursal) => (
                                 <CardRest
-                                    key={sucursal.suc_id}
+                                    key={sucursal.suc_id + sucursal.neg_id}
                                     restaurant={sucursal}
                                     selected={isAdherida(sucursal.suc_id, sucursal.neg_id)}
                                 />

@@ -36,29 +36,29 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
         setSorting,
         setSearch,
         refreshAll,
-        
+
         // Funciones de validación
         validarCodigoCliente,
         validarCodigoPromocion,
         resetValidaciones,
-        
+
         // Estados de validación
         isValidando,
         errorValidacionCliente,
         errorValidacionPromocion,
         datosValidacionCliente,
         datosValidacionPromocion,
-        
+
         // Funciones de canje
         canjearCodigoCliente,
         canjearCodigoPromocion,
         canjearCodigoPuntos,
-        
+
         // Estados de canje
         isCanjeing,
-        
-        error: hookError
-    } = useCanjes(canjesConfig);
+
+        error: hookError,
+    } = useCanjes({ ...canjesConfig, tipoVista: "encargado" });
 
     const { showToast } = useToast();
 
@@ -206,7 +206,7 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
 
             // Cerrar modal y limpiar estados
             handleClosePaso2();
-            
+
             // Actualizar datos después de un breve delay para que el usuario vea el cambio
             setTimeout(() => {
                 refreshAll();
@@ -246,8 +246,8 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
                                 Administra los canjes de productos y promociones - {getTipoVistaLabel(tipoVista)}
                             </p>
                         </div>
-                        <Button 
-                            onClick={handleNuevoCanje} 
+                        <Button
+                            onClick={handleNuevoCanje}
                             className='flex items-center'
                             disabled={isCanjeing || isValidando}
                         >
@@ -265,11 +265,10 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
                                 <button
                                     key={option.value}
                                     onClick={() => setTipoVista(option.value as TipoHistorialCanje)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                                        tipoVista === option.value
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${tipoVista === option.value
                                             ? 'bg-[var(--violet)] text-white'
                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
+                                        }`}
                                     title={option.description}
                                 >
                                     {option.label}

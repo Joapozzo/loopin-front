@@ -58,15 +58,6 @@ export default function Sidebar() {
         router.push('perfil/credenciales');
     };
 
-    const closeSesion = () => {
-        const toastId = toast.loading("Cerrando sesión...");
-
-        setTimeout(() => {
-            logout();
-            toast.success("Sesión cerrada correctamente", { id: toastId });
-        }, 2000);
-    };
-
     const navItems = [
         {
             href: "/home",
@@ -135,7 +126,7 @@ export default function Sidebar() {
                                 Credenciales
                             </button>
                             <button
-                                onClick={closeSesion}
+                                onClick={logout}
                                 className="flex items-center gap-2 px-3 py-2 bg-red-500/20 rounded-lg text-white text-sm hover:bg-red-500/30 transition-all duration-200 backdrop-blur-sm border border-red-300/20"
                             >
                                 <LogOut size={16} />
@@ -197,7 +188,7 @@ export default function Sidebar() {
                                                 </div>
                                             </div>
 
-                                            {item.badge && (
+                                            {item.badge && item.badge > 0 && (
                                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${item.badgeColor || "bg-white/20"
                                                     } ${isActive ? "text-white" : "text-white"}`}>
                                                     {item.badge}

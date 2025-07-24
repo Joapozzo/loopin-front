@@ -9,6 +9,7 @@ import {
 import { auth } from "@/auth/firebase";
 import { onAuthStateChanged, signOut, User, signInWithEmailAndPassword } from "firebase/auth";
 import { getUserProfile } from "@/api/usuariosFetch"
+import toast from "react-hot-toast";
 
 interface UserProfile {
     usuario: {
@@ -35,10 +36,10 @@ interface AuthContextType {
     userRole: 'cliente' | 'encargado' | null;
     userProfile: UserProfile | null;
     isLoading: boolean;
-    needsOnboarding: boolean; 
-    emailNotVerified: boolean; // 🆕 Flag para email no verificado
+    needsOnboarding: boolean;
+    emailNotVerified: boolean;
     login: (email: string, password: string) => Promise<boolean>;
-    loginWithGoogle: (googleUser: User) => Promise<boolean>; 
+    loginWithGoogle: (googleUser: User) => Promise<boolean>;
     logout: () => Promise<void>;
     refreshToken: () => Promise<string | null>;
     completeOnboarding: () => Promise<void>;
@@ -53,9 +54,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isExplicitLogin, setIsExplicitLogin] = useState(false);
-    const [isGoogleLogin, setIsGoogleLogin] = useState(false); 
+    const [isGoogleLogin, setIsGoogleLogin] = useState(false);
     const [needsOnboarding, setNeedsOnboarding] = useState(false);
-    const [emailNotVerified, setEmailNotVerified] = useState(false); // 🆕 Estado para email no verificado
+    const [emailNotVerified, setEmailNotVerified] = useState(false);
+    const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false); // 🆕 Flag para saber si ya cargamos desde localStorage
 
     const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -122,10 +124,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setEmailNotVerified(true);
                 setNeedsOnboarding(false);
                 setToken(null);
-                setUser(firebaseUser); // Guardar usuario para poder reenviar email
+                setUser(firebaseUser);
                 setUserRole(null);
                 setUserProfile(null);
-                return false; // No continuar con la validación
+                return false;
             }
 
             // Email verificado, limpiar el flag
@@ -133,7 +135,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             // Paso 1: Obtener token de Firebase
             const firebaseToken = await firebaseUser.getIdToken();
-            
+
             // Paso 2: Validar rol del usuario
             const roleOrStatus = await validateUserRole(firebaseToken);
 
@@ -145,7 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setNeedsOnboarding(true);
                 setUserRole(null);
                 setUserProfile(null);
-                return true; // Sesión válida pero necesita onboarding
+                return true;
             }
 
             // Si no tiene rol válido, fallar
@@ -184,7 +186,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log("🎉 Completando onboarding...");
 
         if (user) {
-            // Revalidar sesión después de completar onboarding
             const isValid = await validateUserSession(user);
             if (!isValid) {
                 console.log("❌ Error revalidando después de onboarding");
@@ -195,11 +196,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setNeedsOnboarding(false);
     };
 
-    // 🔥 FUNCIÓN DE LOGIN CON GOOGLE - COMPLETAMENTE INDEPENDIENTE
+    // 🔥 FUNCIÓN DE LOGIN CON GOOGLE - MEJORADA
     const loginWithGoogle = async (googleUser: User): Promise<boolean> => {
         try {
             console.log("🔐 Iniciando login con Google para:", googleUser.email);
-            setIsGoogleLogin(true); // 🔥 Bloquear onAuthStateChanged
+            setIsGoogleLogin(true);
 
             // 🔥 VERIFICACIÓN DE EMAIL PARA GOOGLE TAMBIÉN
             if (!googleUser.emailVerified) {
@@ -218,6 +219,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Email verificado, proceder normalmente
             setEmailNotVerified(false);
 
+            // 🆕 NO cerrar sesión - mantener el usuario de Google activo
             // Obtener token de Firebase del usuario de Google
             const firebaseToken = await googleUser.getIdToken();
 
@@ -227,19 +229,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Si necesita onboarding, configurar estado especial
             if (roleOrStatus === "needs_onboarding" || roleOrStatus === null) {
                 console.log("🔄 Usuario de Google con email verificado necesita onboarding");
-                
-                // 🔥 GUARDAR EN LOCALSTORAGE INMEDIATAMENTE
+
+                // 🔥 GUARDAR EN LOCALSTORAGE CON FLAG PERSISTENTE
                 localStorage.setItem("token", firebaseToken);
-                localStorage.setItem("googleLogin", "true"); // Flag especial
-                
+                localStorage.setItem("googleUser", "true");
+                localStorage.setItem("googleUserEmail", googleUser.email || ""); // 🆕 Email de referencia
+
                 setToken(firebaseToken);
                 setUser(googleUser);
                 setNeedsOnboarding(true);
                 setUserRole(null);
                 setUserProfile(null);
-                setIsLoading(false); // 🔥 IMPORTANTE: Terminar loading aquí
+                setIsLoading(false);
                 setIsGoogleLogin(false);
-                
+
                 console.log("✅ Google login configurado para onboarding");
                 return true;
             }
@@ -253,18 +256,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 return false;
             }
 
-            // 🔥 GUARDAR TODO EN LOCALSTORAGE INMEDIATAMENTE
+            // 🔥 GUARDAR TODO EN LOCALSTORAGE CON FLAG PERSISTENTE
             localStorage.setItem("token", firebaseToken);
             localStorage.setItem("role", roleOrStatus);
             localStorage.setItem("userProfile", JSON.stringify(profileResponse.data));
-            localStorage.setItem("googleLogin", "true"); // Flag especial
+            localStorage.setItem("googleUser", "true");
+            localStorage.setItem("googleUserEmail", googleUser.email || ""); // 🆕 Email de referencia
 
             setToken(firebaseToken);
             setUser(googleUser);
             setUserRole(roleOrStatus);
             setUserProfile(profileResponse.data);
             setNeedsOnboarding(false);
-            setIsLoading(false); // 🔥 IMPORTANTE: Terminar loading aquí
+            setIsLoading(false);
             setIsGoogleLogin(false);
 
             console.log(`✅ Usuario de Google autenticado como: ${roleOrStatus}`);
@@ -278,82 +282,136 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    // 🔥 onAuthStateChanged MUY CONTROLADO
+    // 🆕 CARGAR DATOS DESDE LOCALSTORAGE AL INICIAR (PRIORITARIO)
     useEffect(() => {
+        const loadFromStorage = () => {
+            const storedToken = localStorage.getItem("token");
+            const storedRole = localStorage.getItem("role") as "cliente" | "encargado" | null;
+            const storedProfile = localStorage.getItem("userProfile");
+            const isGoogleUser = localStorage.getItem("googleUser") === "true";
+
+            console.log("📦 Intentando cargar desde localStorage...");
+            console.log("📦 Token:", !!storedToken);
+            console.log("📦 Role:", storedRole);
+            console.log("📦 Profile:", !!storedProfile);
+            console.log("📦 Google User:", isGoogleUser);
+
+            if (storedToken) {
+                try {
+                    console.log("✅ Cargando datos desde localStorage");
+                    setToken(storedToken);
+
+                    if (storedRole && storedProfile) {
+                        // Usuario completo
+                        setUserRole(storedRole);
+                        setUserProfile(JSON.parse(storedProfile));
+                        setNeedsOnboarding(false);
+                        setEmailNotVerified(false);
+                        console.log("✅ Usuario completo cargado desde localStorage");
+                    } else {
+                        // Usuario en onboarding (tiene token pero no rol/perfil)
+                        setNeedsOnboarding(true);
+                        setUserRole(null);
+                        setUserProfile(null);
+                        console.log("🔄 Usuario en onboarding cargado desde localStorage");
+                    }
+
+                    setHasLoadedFromStorage(true);
+                } catch (error) {
+                    console.error("❌ Error cargando datos desde localStorage:", error);
+                    localStorage.clear();
+                    setHasLoadedFromStorage(true);
+                }
+            } else {
+                console.log("📦 No hay datos en localStorage");
+                setHasLoadedFromStorage(true);
+            }
+        };
+
+        loadFromStorage();
+    }, []);
+
+    // 🔥 onAuthStateChanged CONTROLADO Y INTELIGENTE
+    useEffect(() => {
+        // No iniciar hasta que hayamos cargado desde localStorage
+        if (!hasLoadedFromStorage) {
+            console.log("⏳ Esperando carga desde localStorage...");
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             console.log("🔍 onAuthStateChanged triggered");
             console.log("🎯 isGoogleLogin:", isGoogleLogin);
             console.log("🎯 user:", firebaseUser?.email);
             console.log("🎯 emailVerified:", firebaseUser?.emailVerified);
 
-            // 🔥 Si es un login de Google, COMPLETAMENTE SALTEADO
+            // 🔥 Si es un login de Google activo, COMPLETAMENTE SALTEADO
             if (isGoogleLogin) {
-                console.log("⏭️ SALTEANDO onAuthStateChanged - es Google login");
-                return; // NO hacer setIsLoading(false) aquí
-            }
-
-            // 🔥 Si hay un flag de googleLogin en localStorage, también saltear
-            const isGoogleLoginFlag = localStorage.getItem("googleLogin");
-            if (isGoogleLoginFlag === "true") {
-                console.log("⏭️ SALTEANDO onAuthStateChanged - flag de Google detectado");
-                localStorage.removeItem("googleLogin");
-                setIsLoading(false);
+                console.log("⏭️ SALTEANDO onAuthStateChanged - es Google login activo");
                 return;
             }
 
             if (firebaseUser) {
-                console.log("🔍 Usuario detectado en Firebase (onAuthStateChanged):", firebaseUser.email);
+                console.log("🔍 Usuario detectado en Firebase:", firebaseUser.email);
 
-                console.log("✅ Procediendo con validación de sesión completa");
-                const isValid = await validateUserSession(firebaseUser);
-                if (!isValid) {
-                    console.log("❌ Validación fallida, cerrando sesión");
-                    await signOut(auth);
+                // 🆕 Verificar si este usuario coincide con el Google user guardado
+                const isGoogleUser = localStorage.getItem("googleUser") === "true";
+                const googleUserEmail = localStorage.getItem("googleUserEmail");
+                const hasCompleteSession = token && userRole && userProfile && !needsOnboarding && !emailNotVerified;
+
+                // 🆕 Si es Google user y ya tenemos sesión completa, verificar email match
+                if (hasCompleteSession && isGoogleUser && googleUserEmail === firebaseUser.email) {
+                    console.log("✅ Usuario de Google con sesión completa y email coincidente, omitiendo revalidación");
+                    setUser(firebaseUser); // Solo actualizar el objeto user de Firebase
+                    setIsLoading(false);
+                    return;
+                }
+
+                // 🆕 Si tenemos token pero estamos en onboarding y es mismo Google user
+                if (token && needsOnboarding && isGoogleUser && googleUserEmail === firebaseUser.email) {
+                    console.log("🔄 Usuario de Google en onboarding con email coincidente, omitiendo revalidación");
+                    setUser(firebaseUser);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Solo revalidar si no tenemos datos o si no es usuario de Google o si el email no coincide
+                if (!hasCompleteSession && (!isGoogleUser || googleUserEmail !== firebaseUser.email)) {
+                    console.log("✅ Procediendo con validación de sesión completa");
+                    const isValid = await validateUserSession(firebaseUser);
+                    if (!isValid) {
+                        console.log("❌ Validación fallida, cerrando sesión");
+                        await signOut(auth);
+                    }
+                } else {
+                    // Ya tenemos datos válidos, solo actualizar user
+                    setUser(firebaseUser);
                 }
             } else {
-                // Usuario no autenticado, limpiar todo
-                console.log("🚪 Usuario desautenticado");
-                localStorage.removeItem("token");
-                localStorage.removeItem("role");
-                localStorage.removeItem("userProfile");
-                localStorage.removeItem("googleLogin"); // Limpiar flag también
-                setToken(null);
-                setUser(null);
-                setUserRole(null);
-                setUserProfile(null);
-                setNeedsOnboarding(false);
-                setEmailNotVerified(false); // 🆕 Limpiar flag de email
+                // Usuario no autenticado, limpiar todo SOLO si no tenemos flag de Google
+                const isGoogleUser = localStorage.getItem("googleUser") === "true";
+
+                if (!isGoogleUser) {
+                    console.log("🚪 Usuario desautenticado");
+                    localStorage.clear();
+                    setToken(null);
+                    setUser(null);
+                    setUserRole(null);
+                    setUserProfile(null);
+                    setNeedsOnboarding(false);
+                    setEmailNotVerified(false);
+                } else {
+                    console.log("🔒 Usuario de Google sin Firebase user, manteniendo datos de localStorage");
+                    // Mantener datos pero marcar como no loading
+                }
             }
-            
+
             setIsLoading(false);
             setIsExplicitLogin(false);
         });
 
         return () => unsubscribe();
-    }, [isGoogleLogin]); // 🔥 Solo dependencia de isGoogleLogin
-
-    // Cargar datos desde localStorage al iniciar (si existen)
-    useEffect(() => {
-        const storedToken = localStorage.getItem("token");
-        const storedRole = localStorage.getItem("role") as "cliente" | "encargado" | null;
-        const storedProfile = localStorage.getItem("userProfile");
-
-        if (storedToken && storedRole && storedProfile) {
-            try {
-                console.log("📦 Cargando datos desde localStorage");
-                setToken(storedToken);
-                setUserRole(storedRole);
-                setUserProfile(JSON.parse(storedProfile));
-                setNeedsOnboarding(false);
-                setEmailNotVerified(false); // 🆕 Usuario ya está completo
-            } catch (error) {
-                console.error("❌ Error cargando datos desde localStorage:", error);
-                localStorage.removeItem("token");
-                localStorage.removeItem("role");
-                localStorage.removeItem("userProfile");
-            }
-        }
-    }, []);
+    }, [hasLoadedFromStorage, isGoogleLogin, token, userRole, userProfile, needsOnboarding, emailNotVerified]); // 🆕 Dependencias mejoradas
 
     // Función de login que maneja todo el flujo
     const login = async (email: string, password: string): Promise<boolean> => {
@@ -371,10 +429,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
+        const toastId = toast.loading("Cerrando sesión...");
+
         try {
-            window.location.href = "/login";
+            // Esperar 2 segundos antes de cerrar sesión
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
             await signOut(auth);
             localStorage.clear();
+
+            toast.success("Sesión cerrada correctamente", { id: toastId });
+
+            // Redirigir después de cerrar sesión y mostrar toast
+            window.location.href = "/login";
         } catch (error) {
             console.error("❌ Error en logout:", error);
 
@@ -384,9 +451,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserRole(null);
             setUserProfile(null);
             setNeedsOnboarding(false);
-            setEmailNotVerified(false); // 🆕 Reset email flag
+            setEmailNotVerified(false);
+
+            toast.error("Error al cerrar sesión", { id: toastId });
         }
     };
+
 
     const refreshToken = async (): Promise<string | null> => {
         if (user) {
@@ -416,14 +486,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return (
         <AuthContext.Provider
             value={{
-                isAuthenticated: !!token && !!user && !needsOnboarding && !emailNotVerified, // 🆕 Incluir emailNotVerified
+                isAuthenticated: !!token && !!user && !needsOnboarding && !emailNotVerified,
                 token,
                 user,
                 userRole,
                 userProfile,
                 isLoading,
                 needsOnboarding,
-                emailNotVerified, // 🆕 Exponer flag
+                emailNotVerified,
                 login,
                 loginWithGoogle,
                 logout,

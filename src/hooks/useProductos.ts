@@ -47,6 +47,7 @@ export interface UseProductosReturn {
     productosTotales: number;
     mode?: 'general' | 'sucursal' | 'by_sucursal_id';
     setCategory: (categoryId: number | null) => void;
+    setSucursalFilter: (sucursalId: number | null) => void;
 }
 
 export const useProductos = (config: UseProductosConfig = {}): UseProductosReturn => {
@@ -81,7 +82,7 @@ export const useProductos = (config: UseProductosConfig = {}): UseProductosRetur
         error,
         refetch
     } = useQuery({
-        queryKey: ['productos', mode, config.negocioId, config.sucursalId],
+        queryKey: ['productos', mode, config.negocioId, config.sucursalId, filters.sucursalId],
         queryFn: async () => {
             if (mode === 'sucursal') {
                 return await productoService.getProductosSucursal(
@@ -315,6 +316,11 @@ export const useProductos = (config: UseProductosConfig = {}): UseProductosRetur
         setPagination(prev => ({ ...prev, page: 1 }));
     }, []);
 
+    const setSucursalFilter = useCallback((sucursalId: number | null) => {
+        setFilters(prev => ({ ...prev, sucursalId }));
+        setPagination(prev => ({ ...prev, page: 1 }));
+    }, []);
+
     // Funciones CRUD
     const createProducto = useCallback(async (data: any) => {
         await createMutation.mutateAsync(data);
@@ -354,6 +360,7 @@ export const useProductos = (config: UseProductosConfig = {}): UseProductosRetur
         isDeleting: deleteMutation.isPending,
         productosTotales,
         mode,
-        setCategory
+        setCategory,
+        setSucursalFilter
     };
 };
