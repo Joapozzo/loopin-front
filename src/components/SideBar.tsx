@@ -11,6 +11,7 @@ import { useUserSidebar } from "@/context/UserSideBarContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/userProfile";
 import { useSucursales, useSucursalesCliente } from "@/hooks/useSucursales";
+import toast from "react-hot-toast";
 
 
 export default function Sidebar() {
@@ -58,7 +59,12 @@ export default function Sidebar() {
     };
 
     const closeSesion = () => {
-        logout();
+        const toastId = toast.loading("Cerrando sesión...");
+
+        setTimeout(() => {
+            logout();
+            toast.success("Sesión cerrada correctamente", { id: toastId });
+        }, 2000);
     };
 
     const navItems = [
@@ -171,8 +177,8 @@ export default function Sidebar() {
                                 <Link
                                     href={item.href}
                                     className={`flex items-center ${isExpanded ? 'gap-3 px-4' : 'justify-center px-2'} py-3 rounded-xl transition-all duration-200 group relative ${isActive
-                                            ? "bg-white text-[var(--violet)] shadow-lg"
-                                            : "text-white/80 hover:bg-white/10 hover:text-white"
+                                        ? "bg-white text-[var(--violet)] shadow-lg"
+                                        : "text-white/80 hover:bg-white/10 hover:text-white"
                                         }`}
                                     title={!isExpanded ? item.label : undefined}
                                 >

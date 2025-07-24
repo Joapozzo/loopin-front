@@ -93,7 +93,7 @@ export default function RegisterStep2() {
 
         try {
             // Obtener token y UID de localStorage
-            const token = localStorage.getItem('authToken');
+            const token = localStorage.getItem('token');
             const firebaseUID = localStorage.getItem('firebaseUID');
 
             if (!token || !firebaseUID) {

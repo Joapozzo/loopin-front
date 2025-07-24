@@ -1,4 +1,3 @@
-// hooks/useLocations.ts
 "use client";
 
 import { useMemo } from 'react';

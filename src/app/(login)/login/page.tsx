@@ -1,7 +1,6 @@
 "use client";
-
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Star, Heart } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Star, Heart, AlertCircle, RefreshCw } from "lucide-react";
 import Button from "@/components/ui/buttons/Button";
 import Input from "@/components/ui/inputs/Input";
 import { useRouter } from "next/navigation";
@@ -10,10 +9,22 @@ import { useAuth } from "@/hooks/useAuth";
 import GmailIcon from "@/components/icons/Gmail";
 import SpinnerLoader from "@/components/ui/SpinerLoader";
 import Image from "next/image";
+import Link from "next/link";
+import { auth, googleProvider } from "@/auth/firebase";
+import { signInWithEmailAndPassword, sendEmailVerification, signInWithPopup } from "firebase/auth";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { isAuthenticated, isLoading: authLoading, login, userRole } = useAuth();
+    // ✅ Incluir emailNotVerified en la destructuración
+    const { 
+        isAuthenticated, 
+        isLoading: authLoading, 
+        userRole, 
+        login, 
+        needsOnboarding, 
+        emailNotVerified, // 🆕 Nuevo flag
+        loginWithGoogle 
+    } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
@@ -21,24 +32,46 @@ export default function LoginPage() {
         password: ""
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
+    const [showEmailVerificationError, setShowEmailVerificationError] = useState(false);
+    const [unverifiedUser, setUnverifiedUser] = useState<any>(null);
 
     useEffect(() => {
-        if (!authLoading && isAuthenticated) {
-            setIsRedirecting(true);
+        if (!authLoading) {
+            // 🆕 PRIORIDAD 1: Si email no está verificado, no redirigir
+            if (emailNotVerified) {
+                console.log("🔒 Email no verificado, mantener en login");
+                return;
+            }
 
-            sessionStorage.setItem('recentLogin', 'true');
+            // PRIORIDAD 2: Si necesita onboarding, redirigir
+            if (needsOnboarding) {
+                setIsRedirecting(true);
+                setTimeout(() => {
+                    router.push("/onboarding");
+                }, 500);
+                return;
+            }
 
-            setTimeout(() => {
-                if (userRole === 'cliente') {
-                    router.push("/home");
-                }
-                if (userRole === 'encargado') {
-                    router.push("/res/dashboard");
-                }
-            }, 1000);
+            // PRIORIDAD 3: Si está autenticado y NO necesita onboarding
+            if (isAuthenticated && !needsOnboarding) {
+                setIsRedirecting(true);
+                sessionStorage.setItem('recentLogin', 'true');
+                setTimeout(() => {
+                    if (userRole === 'cliente') {
+                        router.push("/home");
+                    } else if (userRole === 'encargado') {
+                        router.push("/res/dashboard");
+                    } else {
+                        // Fallback si no tiene rol definido
+                        router.push("/home");
+                    }
+                }, 1000);
+                return;
+            }
         }
-    }, [isAuthenticated, authLoading, router, userRole]);
+    }, [isAuthenticated, authLoading, router, userRole, needsOnboarding, emailNotVerified]); // 🆕 Agregar emailNotVerified
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({
@@ -63,13 +96,30 @@ export default function LoginPage() {
         const toastId = toast.loading("Iniciando sesión...");
 
         try {
+            // Intentar hacer login directamente con Firebase para verificar email
+            const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+            const user = userCredential.user;
+
+            // Verificar si el email está verificado
+            if (!user.emailVerified) {
+                // Si el email no está verificado, NO cerrar sesión
+                // El AuthContext se encargará de manejar el estado
+                setUnverifiedUser(user);
+                setShowEmailVerificationError(true);
+                toast.error("Debes verificar tu email antes de iniciar sesión", { id: toastId });
+                return;
+            }
+
+            // Si el email está verificado, cerrar sesión temporal y usar el hook de auth
+            await auth.signOut();
+
+            // ✅ Usar el hook de login
             await login(formData.email, formData.password);
 
             toast.success("Sesión iniciada correctamente", { id: toastId, duration: 1000 });
-
             sessionStorage.setItem('recentLogin', 'true');
 
-            setIsRedirecting(true);
+            // ✅ NOTA: La redirección se maneja ahora en el useEffect de arriba
 
         } catch (error: any) {
             console.error("❌ Error durante el login:", error);
@@ -106,6 +156,81 @@ export default function LoginPage() {
         }
     };
 
+    // 🆕 Función para manejar login con Google
+    const handleGoogleLogin = async () => {
+        setIsGoogleLoading(true);
+        const toastId = toast.loading("Iniciando sesión con Google...");
+
+        try {
+            // Configurar el provider para solicitar información adicional
+            googleProvider.addScope('email');
+            googleProvider.addScope('profile');
+
+            // Abrir popup de Google
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+
+            console.log("🔍 Usuario de Google:", user.email);
+
+            // Los emails de Google ya están verificados automáticamente
+            // Cerrar sesión temporal para usar nuestro sistema de auth
+            await auth.signOut();
+
+            // Usar nuestro hook de login con Google
+            if (loginWithGoogle) {
+                await loginWithGoogle(user);
+            } else {
+                toast.error("Función de Google login no disponible", { id: toastId });
+                return;
+            }
+
+            toast.success("Sesión iniciada con Google", { id: toastId, duration: 1000 });
+            sessionStorage.setItem('recentLogin', 'true');
+
+        } catch (error: any) {
+            console.error("❌ Error durante login con Google:", error);
+
+            if (error.code) {
+                switch (error.code) {
+                    case 'auth/popup-closed-by-user':
+                        toast.error("Login cancelado", { id: toastId });
+                        break;
+                    case 'auth/popup-blocked':
+                        toast.error("Popup bloqueado. Permitir popups para este sitio", { id: toastId });
+                        break;
+                    case 'auth/network-request-failed':
+                        toast.error("Error de conexión", { id: toastId });
+                        break;
+                    case 'auth/too-many-requests':
+                        toast.error("Demasiados intentos. Intentá más tarde", { id: toastId });
+                        break;
+                    default:
+                        toast.error("Error con Google login: " + error.message, { id: toastId });
+                }
+            } else {
+                toast.error("Error inesperado con Google", { id: toastId });
+            }
+        } finally {
+            setIsGoogleLoading(false);
+        }
+    };
+
+    const resendVerificationEmail = async () => {
+        if (!unverifiedUser) return;
+
+        const toastId = toast.loading("Reenviando email de verificación...");
+
+        try {
+            await sendEmailVerification(unverifiedUser, {
+                url: `${window.location.origin}/login`,
+                handleCodeInApp: false
+            });
+            toast.success("Email de verificación reenviado. Revisá tu bandeja de entrada.", { id: toastId });
+        } catch (error) {
+            toast.error("Error al reenviar el email", { id: toastId });
+        }
+    };
+
     const goToLandingPage = () => {
         router.push("/");
     }
@@ -114,15 +239,25 @@ export default function LoginPage() {
         router.push("/register");
     }
 
+    const closeVerificationError = () => {
+        setShowEmailVerificationError(false);
+        setUnverifiedUser(null);
+    };
+
     if (authLoading) {
         return <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
-            <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />;
+            <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
         </div>
     }
 
     if (isRedirecting) {
         return <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
-            <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />;
+            <div className="text-center">
+                <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
+                <p className="mt-4 text-[var(--violet)] font-semibold">
+                    {needsOnboarding ? "Completando configuración..." : "Redirigiendo..."}
+                </p>
+            </div>
         </div>
     }
 
@@ -144,7 +279,66 @@ export default function LoginPage() {
             <div className="absolute top-20 left-10 w-20 h-20 bg-[var(--rose)]/20 rounded-full animate-pulse"></div>
             <div className="absolute bottom-20 right-10 w-32 h-32 bg-[var(--violet)]/20 rounded-full animate-pulse delay-1000"></div>
 
-            <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden grid lg:grid-cols-2 z-10">
+            <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden grid lg:grid-cols-2 z-10 relative">
+                {/* 🆕 Modal automático si emailNotVerified es true */}
+                {(showEmailVerificationError || emailNotVerified) && (
+                    <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-auto shadow-xl">
+                            <div className="text-center space-y-4">
+                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                                    <AlertCircle className="w-8 h-8 text-red-600" />
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xl font-bold text-red-600 mb-2">
+                                        Email no verificado
+                                    </h3>
+                                    <p className="text-gray-600 text-sm">
+                                        Necesitas verificar tu email antes de poder iniciar sesión.
+                                    </p>
+                                    <p className="text-gray-600 text-sm mt-2">
+                                        Email: <span className="font-semibold">{formData.email || unverifiedUser?.email}</span>
+                                    </p>
+                                </div>
+
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                    <p className="text-xs text-yellow-700">
+                                        1. Revisá tu bandeja de entrada (y spam)<br />
+                                        2. Hacé clic en el enlace de verificación<br />
+                                        3. Volvé acá e iniciá sesión nuevamente
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {unverifiedUser && (
+                                        <Button
+                                            onClick={resendVerificationEmail}
+                                            variant="primary"
+                                            fullWidth
+                                            size="sm"
+                                            rounded="full"
+                                            className="flex items-center justify-center"
+                                        >
+                                            <RefreshCw size={14} className="mr-2" />
+                                            Reenviar email de verificación
+                                        </Button>
+                                    )}
+
+                                    <Button
+                                        onClick={closeVerificationError}
+                                        variant="outline"
+                                        fullWidth
+                                        size="sm"
+                                        rounded="full"
+                                    >
+                                        Cerrar
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Panel izquierdo - Información */}
                 <div className="hidden lg:block">
                     <div className="bg-gradient-to-br from-[var(--violet)] to-[var(--rose)] p-6 text-white h-full flex flex-col justify-center">
@@ -157,7 +351,6 @@ export default function LoginPage() {
                                 beneficios gastronómicos.
                             </p>
                         </div>
-
                         <div className="space-y-4 mb-6">
                             <div className="flex items-center space-x-3">
                                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -170,7 +363,6 @@ export default function LoginPage() {
                                     </p>
                                 </div>
                             </div>
-
                             <div className="flex items-center space-x-3">
                                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                                     <Heart className="w-5 h-5" />
@@ -183,7 +375,6 @@ export default function LoginPage() {
                                 </div>
                             </div>
                         </div>
-
                         <div className="p-4 bg-white/10 rounded-xl">
                             <div className="grid grid-cols-2 gap-4 text-center">
                                 <div>
@@ -216,7 +407,6 @@ export default function LoginPage() {
                             <h2 className="text-2xl font-semibold text-[var(--violet)] mb-2">
                                 Iniciá sesión
                             </h2>
-                            {/* <p className="text-gray-600">Accedé a tu cuenta</p> */}
                         </div>
 
                         {/* Formulario */}
@@ -234,7 +424,6 @@ export default function LoginPage() {
                                     onChange={handleInputChange}
                                 />
                             </div>
-
                             <div>
                                 <label className="block text-sm font-semibold text-[var(--violet)] mb-2">
                                     Contraseña
@@ -256,13 +445,11 @@ export default function LoginPage() {
                                     </button>
                                 </div>
                             </div>
-
                             <div className="text-right">
-                                <button className="text-[var(--violet)] hover:text-[var(--violet-200)] text-sm font-semibold transition-colors">
+                                <Link className="text-[var(--violet)] hover:text-[var(--violet-200)] text-sm font-semibold transition-colors" href="/forgot-password">
                                     ¿Olvidaste tu contraseña?
-                                </button>
+                                </Link>
                             </div>
-
                             <Button
                                 onClick={handleSubmit}
                                 variant="primary"
@@ -300,11 +487,24 @@ export default function LoginPage() {
                         {/* Login social */}
                         <div className="grid grid-cols-1 gap-3">
                             <Button
+                                onClick={handleGoogleLogin}
                                 variant="outline"
-                                className="p-2 text-sm flex items-center flex-col justify-center"
+                                className="p-3 text-sm flex items-center justify-center space-x-2 hover:bg-gray-50 transition-colors"
                                 rounded="lg"
+                                disabled={isGoogleLoading}
+                                fullWidth
                             >
-                                <GmailIcon />
+                                {isGoogleLoading ? (
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                                        <span>Conectando...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <GmailIcon />
+                                        <span className="font-medium">Continuar con Google</span>
+                                    </>
+                                )}
                             </Button>
                         </div>
 
@@ -319,7 +519,6 @@ export default function LoginPage() {
                                     Registrate acá
                                 </button>
                             </p>
-
                             <button
                                 className="inline-flex items-center text-gray-500 hover:text-[var(--violet)] transition-colors text-sm"
                                 onClick={goToLandingPage}

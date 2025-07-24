@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Mail, Lock, Eye, EyeOff, CheckCircle, RefreshCw } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRegister } from "@/context/RegisterContext";
@@ -9,12 +9,18 @@ import { RegisterLayout } from "@/hooks/RegisterLayout";
 import { StepHeader } from "@/components/StepHeader";
 import Button from "@/components/ui/buttons/Button";
 import Input from "@/components/ui/inputs/Input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/auth/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { 
+    createUserWithEmailAndPassword, 
+    sendEmailVerification, 
+    onAuthStateChanged,
+    User 
+} from "firebase/auth";
 import toast from "react-hot-toast";
+import SpinnerLoader from "@/components/ui/SpinerLoader";
 
 const step1Schema = z.object({
     email: z.string().email("Ingresa un email válido"),
@@ -34,6 +40,10 @@ export default function RegisterStep1() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showVerification, setShowVerification] = useState(false);
+    const [isCheckingVerification, setIsCheckingVerification] = useState(false);
+    const [userEmail, setUserEmail] = useState("");
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     const {
         register,
@@ -44,6 +54,52 @@ export default function RegisterStep1() {
         mode: "onChange"
     });
 
+    // Listener para cambios en el estado de autenticación
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user && showVerification) {
+                setCurrentUser(user);
+                // Verificar automáticamente si el email ya está verificado
+                checkEmailVerification(user);
+            }
+        });
+
+        return () => unsubscribe();
+    }, [showVerification]);
+
+    const checkEmailVerification = async (user: User) => {
+        setIsCheckingVerification(true);
+        
+        try {
+            // Recargar el usuario para obtener el estado más actualizado
+            await user.reload();
+            
+            if (user.emailVerified) {
+                toast.success("Email verificado correctamente");
+                
+                const token = await user.getIdToken();
+                
+                // Guardar token en localStorage
+                localStorage.setItem('token', token);
+                localStorage.setItem('firebaseUID', user.uid);
+                
+                // Guardar datos del paso 1
+                updateStep1Data({
+                    email: user.email!,
+                    firebaseUID: user.uid
+                });
+
+                setTimeout(() => {
+                    router.push("/login");
+                }, 1000);
+            }
+        } catch (error) {
+            console.error("Error checking verification:", error);
+        } finally {
+            setIsCheckingVerification(false);
+        }
+    };
+
     const onSubmit = async (formData: Step1Data) => {
         setIsLoading(true);
         const toastId = toast.loading("Creando cuenta...");
@@ -52,29 +108,19 @@ export default function RegisterStep1() {
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
             const firebaseUser = userCredential.user;
             
-            const token = await firebaseUser.getIdToken();
-
-            // Guardar token en localStorage
-            localStorage.setItem('authToken', token);
-            localStorage.setItem('firebaseUID', firebaseUser.uid);
-            
-            // Guardar datos del paso 1
-            updateStep1Data({
-                email: formData.email,
-                password: formData.password,
-                firebaseUID: firebaseUser.uid
+            // Enviar email de verificación
+            await sendEmailVerification(firebaseUser, {
+                url: `${window.location.origin}/login`, // URL donde redirigir después de verificar
+                handleCodeInApp: false
             });
 
-            toast.success("Cuenta creada exitosamente", { id: toastId });
+            setUserEmail(formData.email);
+            setCurrentUser(firebaseUser);
+            setShowVerification(true);
             
-            setTimeout(() => {
-                router.push("/register/step2");
-                setIsLoading(false);
-            }, 100);
+            toast.success("Cuenta creada. Revisá tu email para verificar", { id: toastId });
 
         } catch (error: any) {
-            setIsLoading(false);
-            
             switch (error.code) {
                 case 'auth/email-already-in-use':
                     toast.error("Este email ya está registrado", { id: toastId });
@@ -91,9 +137,109 @@ export default function RegisterStep1() {
                 default:
                     toast.error("Error al crear la cuenta", { id: toastId });
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
+    const resendVerificationEmail = async () => {
+        if (!currentUser) return;
+        
+        const toastId = toast.loading("Reenviando email...");
+        
+        try {
+            await sendEmailVerification(currentUser, {
+                url: `${window.location.origin}/login`,
+                handleCodeInApp: false
+            });
+            toast.success("Email de verificación reenviado", { id: toastId });
+        } catch (error) {
+            toast.error("Error al reenviar el email", { id: toastId });
+        }
+    };
+
+    const manualCheckVerification = async () => {
+        if (!currentUser) return;
+        await checkEmailVerification(currentUser);
+    };
+
+    // Vista de verificación de email
+    if (showVerification) {
+        return (
+            <RegisterLayout onGoToLogin={goToLogin} onGoToHome={goToHome}>
+                <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+                        <Mail className="w-10 h-10 text-purple-600" />
+                    </div>
+                    
+                    <div>
+                        <h2 className="text-2xl font-bold text-purple-600 mb-2">
+                            Verificá tu email
+                        </h2>
+                        <p className="text-gray-600">
+                            Te enviamos un enlace de verificación a:
+                        </p>
+                        <p className="font-semibold text-purple-600 mt-1">
+                            {userEmail}
+                        </p>
+                    </div>
+
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <p className="text-sm text-purple-700">
+                            1. Revisá tu bandeja de entrada (y spam)<br />
+                            2. Hacé clic en el enlace de verificación<br />
+                            3. Volvé acá y verificá tu estado
+                        </p>
+                    </div>
+
+                    {isCheckingVerification ? (
+                        <div className="flex items-center justify-center space-x-2 text-purple-600 flex-col">
+                            <SpinnerLoader color="text-purple-600" size="h-5 w-5" />
+                            <span>Verificando...</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <Button
+                                onClick={manualCheckVerification}
+                                variant="primary"
+                                fullWidth
+                                size="md"
+                                rounded="full"
+                                className="shadow-lg flex items-center justify-center"
+                            >
+                                <CheckCircle size={16} className="mr-2" />
+                                Ya verifiqué mi email
+                            </Button>
+
+                            <Button
+                                onClick={resendVerificationEmail}
+                                variant="outline"
+                                fullWidth
+                                size="md"
+                                rounded="full"
+                                className="flex items-center justify-center"
+                            >
+                                <RefreshCw size={16} className="mr-2" />
+                                Reenviar email
+                            </Button>
+                        </div>
+                    )}
+
+                    <div className="text-center text-sm text-gray-500">
+                        <p>¿Problemas con la verificación?</p>
+                        <button 
+                            onClick={goToLogin}
+                            className="text-purple-600 hover:text-purple-800 font-semibold"
+                        >
+                            Contactar soporte
+                        </button>
+                    </div>
+                </div>
+            </RegisterLayout>
+        );
+    }
+
+    // Vista del formulario de registro
     return (
         <RegisterLayout onGoToLogin={goToLogin} onGoToHome={goToHome}>
             <StepHeader
@@ -191,11 +337,16 @@ export default function RegisterStep1() {
                             </div>
                         ) : (
                             <>
-                                <span>Siguiente</span>
+                                <span>Crear cuenta</span>
                                 <ArrowRight size={16} className="ml-2" />
                             </>
                         )}
                     </Button>
+                </div>
+
+                {/* Información adicional */}
+                <div className="text-center text-xs text-gray-500 mt-4">
+                    <p>Al crear una cuenta, recibirás un email de verificación</p>
                 </div>
             </div>
         </RegisterLayout>

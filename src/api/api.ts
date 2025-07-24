@@ -9,16 +9,31 @@ export class ApiClient {
         this.baseURL = baseURL;
     }
 
-    // Método para obtener el token automáticamente
+    // 🔥 MÉTODO MEJORADO para obtener el token
     private async getAuthToken(): Promise<string | null> {
         try {
+            // Prioridad 1: Intentar obtener token del usuario actual de Firebase
             const user = auth.currentUser;
             if (user) {
                 return await user.getIdToken();
             }
+
+            // Prioridad 2: Si no hay usuario de Firebase, usar localStorage
+            const storedToken = localStorage.getItem("token");
+            if (storedToken) {
+                return storedToken;
+            }
+
             return null;
         } catch (error) {
-            console.error('Error obteniendo token:', error);
+            console.error('❌ ApiClient: Error obteniendo token:', error);
+            
+            // Fallback: intentar localStorage si falla Firebase
+            const storedToken = localStorage.getItem("token");
+            if (storedToken) {
+                return storedToken;
+            }
+            
             return null;
         }
     }
