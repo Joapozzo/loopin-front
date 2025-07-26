@@ -9,6 +9,7 @@ import { VentaFormModalContainer } from '../modals/VentaFormModal';
 import { createCompraColumns } from '../VentaColumns';
 import { Toaster } from 'react-hot-toast';
 import { useToast } from '@/hooks/useToast';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface VentaTableProps extends UseVentasConfig {
     className?: string;
@@ -18,8 +19,9 @@ export const VentaTable: React.FC<VentaTableProps> = ({
     className,
     ...ventasConfig
 }) => {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { compras, loading, error: hookError, createVenta, refresh, isCreating, comprasTotales, setSearch } = useVentas(ventasConfig);
-
     const { showToast } = useToast();
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -75,6 +77,15 @@ export const VentaTable: React.FC<VentaTableProps> = ({
         () => createCompraColumns(),
         []
     );
+
+    React.useEffect(() => {
+        const shouldOpenModal = searchParams.get('modal') === 'nueva-venta';
+        if (shouldOpenModal) {
+            setIsFormModalOpen(true);
+
+            router.replace('/res/ventas');
+        }
+    }, [searchParams, router]);
 
     // Error del hook solamente
     const displayError = hookError;

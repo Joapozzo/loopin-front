@@ -70,8 +70,7 @@ export const CanjeModalPaso1: React.FC<CanjeModalPaso1Props> = ({
     const handleFormSubmit = async (data: FormData) => {
         try {
             setSubmitError(null);
-            console.log('📤 Datos de validación:', data);
-            
+
             await onSubmit(data);
             
         } catch (error: any) {

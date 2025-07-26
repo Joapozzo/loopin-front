@@ -5,6 +5,7 @@ import { Sucursal } from "@/types/sucursal";
 import { useModalStore } from "@/stores/useModalStore";
 import { useRestaurantStore } from "@/stores/useRestaurantStore";
 import Image from "next/image";
+import { createRestaurantUrl } from "@/data/utils";
 
 interface CardRestProps {
     restaurant: Sucursal;
@@ -26,8 +27,7 @@ export default function CardRest({ restaurant, selected }: CardRestProps) {
     };
 
     return (
-        <Link
-            href={`/restaurantes/${suc_id}/${neg_id}`}
+        <Link href={createRestaurantUrl(suc_nom)}
             className="flex items-center gap-4 justify-between bg-[var(--violet-50)] rounded-lg px-5 py-6 w-full hover:scale-105 transition-all duration-300 ease-in-out hover:bg-[var(--violet-100)] mt-6"
         >
             <div className="flex items-center gap-4 flex-1 min-w-0">

@@ -103,12 +103,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
 
-            // Si ambas validaciones fallan con 403, necesita onboarding
-            if (clienteResponse.status === 403 || encargadoResponse.status === 403) {
+            // 🔥 NUEVA LÓGICA: Si ambas APIs devuelven 200 pero con false, necesita onboarding
+            if (clienteResponse.status === 200 && encargadoResponse.status === 200) {
+                console.log("🔄 Usuario existe en Firebase pero no en BD - needs_onboarding");
                 return "needs_onboarding";
             }
 
-            // Si llega aquí, no tiene acceso válido
+            // Si hay otros códigos de error (403, 401, etc.), no tiene acceso válido
+            console.log("❌ No tiene acceso válido - retornando null");
             return null;
         } catch (error) {
             console.error("❌ Error validando rol del usuario:", error);
@@ -139,15 +141,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Paso 2: Validar rol del usuario
             const roleOrStatus = await validateUserRole(firebaseToken);
 
-            // Si necesita onboarding, configurar estado especial
+            // 🆕 Si necesita onboarding, configurar estado especial
             if (roleOrStatus === "needs_onboarding") {
-                console.log("🔄 Email verificado, pero necesita onboarding");
+                console.log("🆕 Usuario nuevo detectado - configurando para onboarding");
                 setToken(firebaseToken);
                 setUser(firebaseUser);
+                setUserRole(null); // 🔥 NO asignar rol hasta completar onboarding
                 setNeedsOnboarding(true);
-                setUserRole(null);
                 setUserProfile(null);
-                return true;
+                setEmailNotVerified(false);
+                return true; // ✅ Retornar true para usuarios que necesitan onboarding
             }
 
             // Si no tiene rol válido, fallar
@@ -156,14 +159,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 return false;
             }
 
-            // Paso 3: Obtener perfil del usuario (solo si tiene rol válido)
+            // Resto del código existente...
             const profileResponse = await getUserProfile(firebaseToken);
             if (!profileResponse.ok) {
                 console.error("❌ Error obteniendo perfil:", profileResponse.data);
                 return false;
             }
 
-            // Paso 4: Guardar todo en estado y localStorage
             localStorage.setItem("token", firebaseToken);
             localStorage.setItem("role", roleOrStatus);
             localStorage.setItem("userProfile", JSON.stringify(profileResponse.data));
@@ -196,7 +198,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setNeedsOnboarding(false);
     };
 
-    // 🔥 FUNCIÓN DE LOGIN CON GOOGLE - MEJORADA
     const loginWithGoogle = async (googleUser: User): Promise<boolean> => {
         try {
             console.log("🔐 Iniciando login con Google para:", googleUser.email);
@@ -282,38 +283,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    // 🆕 CARGAR DATOS DESDE LOCALSTORAGE AL INICIAR (PRIORITARIO)
     useEffect(() => {
         const loadFromStorage = () => {
             const storedToken = localStorage.getItem("token");
             const storedRole = localStorage.getItem("role") as "cliente" | "encargado" | null;
             const storedProfile = localStorage.getItem("userProfile");
-            const isGoogleUser = localStorage.getItem("googleUser") === "true";
-
-            console.log("📦 Intentando cargar desde localStorage...");
-            console.log("📦 Token:", !!storedToken);
-            console.log("📦 Role:", storedRole);
-            console.log("📦 Profile:", !!storedProfile);
-            console.log("📦 Google User:", isGoogleUser);
+            // const isGoogleUser = localStorage.getItem("googleUser") === "true";
 
             if (storedToken) {
                 try {
-                    console.log("✅ Cargando datos desde localStorage");
                     setToken(storedToken);
 
                     if (storedRole && storedProfile) {
-                        // Usuario completo
                         setUserRole(storedRole);
                         setUserProfile(JSON.parse(storedProfile));
                         setNeedsOnboarding(false);
                         setEmailNotVerified(false);
-                        console.log("✅ Usuario completo cargado desde localStorage");
+
+                        window.dispatchEvent(new StorageEvent('storage', {
+                            key: 'userProfile',
+                            newValue: storedProfile,
+                            url: window.location.href
+                        }));
+
+                        const comercioData = localStorage.getItem('comercio_encargado_data');
+                        if (comercioData) {
+                            window.dispatchEvent(new StorageEvent('storage', {
+                                key: 'comercio_encargado_data',
+                                newValue: comercioData,
+                                url: window.location.href
+                            }));
+                        }
                     } else {
-                        // Usuario en onboarding (tiene token pero no rol/perfil)
                         setNeedsOnboarding(true);
                         setUserRole(null);
                         setUserProfile(null);
-                        console.log("🔄 Usuario en onboarding cargado desde localStorage");
                     }
 
                     setHasLoadedFromStorage(true);
@@ -432,15 +436,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const toastId = toast.loading("Cerrando sesión...");
 
         try {
-            // Esperar 2 segundos antes de cerrar sesión
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
 
             await signOut(auth);
             localStorage.clear();
 
             toast.success("Sesión cerrada correctamente", { id: toastId });
 
-            // Redirigir después de cerrar sesión y mostrar toast
             window.location.href = "/login";
         } catch (error) {
             console.error("❌ Error en logout:", error);
@@ -456,7 +458,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             toast.error("Error al cerrar sesión", { id: toastId });
         }
     };
-
 
     const refreshToken = async (): Promise<string | null> => {
         if (user) {
@@ -486,7 +487,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return (
         <AuthContext.Provider
             value={{
-                isAuthenticated: !!token && !!user && !needsOnboarding && !emailNotVerified,
+                isAuthenticated: !!token && !!user && !!userRole && !needsOnboarding && !emailNotVerified,
                 token,
                 user,
                 userRole,

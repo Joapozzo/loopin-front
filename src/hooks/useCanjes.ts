@@ -168,7 +168,7 @@ export const useCanjes = (config: UseCanjesConfig = {}): UseCanjesReturn => {
     } = useQuery({
         queryKey: ['canjes-encargado'],
         queryFn: () => canjeService.getHistorialCanjesEncargado(),
-        enabled: enabled && (initialTipoVista === 'encargado' || tipoVista === 'encargado'),
+        enabled: enabled && tipoVista === 'encargado',
         staleTime: autoRefresh ? refreshInterval : 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 2,
@@ -283,15 +283,18 @@ export const useCanjes = (config: UseCanjesConfig = {}): UseCanjesReturn => {
 
     // =================== MUTACIONES DE CANJE ===================
 
-    // Mutación para canjear código de cliente
     const canjeClienteMutation = useMutation({
         mutationFn: async (data: CanjearCodigoClienteRequest) => {
             return await canjeService.canjearCodigoCliente(data);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['canjes-encargado'] });
-            queryClient.invalidateQueries({ queryKey: ['canjes-cliente'] });
-            // Limpiar datos de validación después del canje exitoso
+            // Solo invalidar la vista actual
+            if (tipoVista === 'encargado') {
+                queryClient.invalidateQueries({ queryKey: ['canjes-encargado'] });
+            }
+            if (tipoVista === 'cliente') {
+                queryClient.invalidateQueries({ queryKey: ['canjes-cliente'] });
+            }
             setDatosValidacionCliente(null);
         },
         onError: (error: any) => {
@@ -299,14 +302,15 @@ export const useCanjes = (config: UseCanjesConfig = {}): UseCanjesReturn => {
         }
     });
 
-    // Mutación para canjear código promocional
     const canjePromocionMutation = useMutation({
         mutationFn: async (data: CanjearCodigoPromocionRequest) => {
             return await canjeService.canjearCodigoPromocion(data);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['canjes-promocion'] });
-            // Limpiar datos de validación después del canje exitoso
+            // Solo invalidar cuando estamos en vista promocion
+            if (tipoVista === 'promocion') {
+                queryClient.invalidateQueries({ queryKey: ['canjes-promocion'] });
+            }
             setDatosValidacionPromocion(null);
         },
         onError: (error: any) => {
@@ -587,14 +591,32 @@ export const useCanjes = (config: UseCanjesConfig = {}): UseCanjesReturn => {
     }, [refetchTarjeta]);
 
     const refreshAll = useCallback(async () => {
-        return await Promise.all([
-            refetchEncargado(),
-            refetchPromocion(),
-            refetchPuntos(),
-            refetchCliente(),
-            tarjetaId ? refetchTarjeta() : Promise.resolve()
-        ]);
-    }, [refetchEncargado, refetchPromocion, refetchPuntos, refetchCliente, refetchTarjeta, tarjetaId]);
+        const refreshPromises: Promise<any>[] = [];
+
+        // Solo refrescar las queries que están habilitadas según el tipoVista actual
+        if (tipoVista === 'encargado') {
+            refreshPromises.push(refetchEncargado());
+        }
+
+        if (tipoVista === 'promocion') {
+            refreshPromises.push(refetchPromocion());
+        }
+
+        if (tipoVista === 'puntos') {
+            refreshPromises.push(refetchPuntos());
+        }
+
+        if (tipoVista === 'cliente') {
+            refreshPromises.push(refetchCliente());
+        }
+
+        // Solo refrescar historial de tarjeta si hay tarjetaId
+        if (tarjetaId) {
+            refreshPromises.push(refetchTarjeta());
+        }
+
+        return await Promise.all(refreshPromises);
+    }, [refetchEncargado, refetchPromocion, refetchPuntos, refetchCliente, refetchTarjeta, tarjetaId, tipoVista]);
 
     // Función para buscar canje por ID
     const getCanjeById = useCallback((id: string): CanjeUnificado | undefined => {

@@ -13,7 +13,9 @@ export const useCodigoGenerado = (
     // Nuevos parámetros para códigos promocionales
     neg_id?: number | null,
     suc_id?: number | null,
-    enableCodigosPromocionales: boolean = false
+    enableCodigosPromocionales: boolean = false,
+    // 🆕 NUEVO PARÁMETRO: controlar auto-generación
+    autoGenerate: boolean = false
 ) => {
     const [codigoResponse, setCodigoResponse] = useState<GenerarCodigoResponse | null>(null);
     const queryClient = useQueryClient();
@@ -101,14 +103,14 @@ export const useCodigoGenerado = (
         }
     });
 
-    // ✅ EFECTO CORREGIDO: Auto-generar código cuando se detecta un producto
+    // 🚨 EFECTO MODIFICADO: Solo auto-generar si está habilitado
     useEffect(() => {
-        if (producto) {
+        if (producto && autoGenerate) {
             setCodigoResponse(null); // Limpiar código anterior
-            // 🚀 AUTO-GENERAR código para el nuevo producto
+            // 🚀 AUTO-GENERAR código para el nuevo producto (solo si autoGenerate es true)
             generarCodigoMutation.mutate(producto);
         }
-    }, [producto?.pro_id]); // Solo cuando cambia el ID del producto
+    }, [producto?.pro_id, autoGenerate]); // Depende también de autoGenerate
 
     const cargarCodigosCliente = useCallback(async () => {
         await Promise.all([

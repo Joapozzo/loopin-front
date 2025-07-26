@@ -106,7 +106,7 @@ export default function Page() {
                             <p className="text-gray-500 text-sm max-w-md">
                                 {searchTerm
                                     ? `No se encontraron comercios que coincidan con "${searchTerm}"`
-                                    : "No hay comercios adheridos a tu cuenta. Busca y adhiere restaurantes desde la sección 'Comercios'."
+                                    : "No hay comercios adheridos a tu cuenta. Busca y adhiere comercios desde la sección 'Comercios'."
                                 }
                             </p>
                             {!searchTerm && (

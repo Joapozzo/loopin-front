@@ -8,6 +8,7 @@ import { X, RefreshCw, Check } from "lucide-react";
 import { useProductoStore } from "@/stores/useProductStore";
 import Button from "../ui/buttons/Button";
 import SpinnerLoader from "../ui/SpinerLoader";
+import { useEffect, useRef } from "react";
 
 export default function CuponModal() {
     const clearSeleccionados = useCodigosStore((state) => state.clearSeleccionados);
@@ -18,13 +19,43 @@ export default function CuponModal() {
 
     const { isMounted, isClosing, handleClose } = useAnimatedModal(isCuponModalOpen, closeCuponModal);
 
+    // 🚨 CAMBIO CLAVE: autoGenerate: false, usar generarCodigoManual
     const {
         codigoResponse,
         loading: loadingGeneracion,
         error: errorGeneracion,
         regenerarCodigo,
-        invalidarCodigos
-    } = useCodigoGenerado(producto);
+        invalidarCodigos,
+        generarCodigoManual // ← Usar función manual
+    } = useCodigoGenerado(producto, 'activos', undefined, undefined, false, false); // ← autoGenerate: false
+
+    // 🚨 SOLUCIÓN AL LOOP: Usar ref para controlar ejecución única
+    const hasGeneratedRef = useRef(false);
+    const currentProductIdRef = useRef<number | null>(null);
+
+    // 🚨 NUEVO: Generar código SOLO cuando se abra este modal (una vez por producto)
+    useEffect(() => {
+        if (isCuponModalOpen && producto) {
+            // Si es un producto diferente, resetear el flag
+            if (currentProductIdRef.current !== producto.pro_id) {
+                hasGeneratedRef.current = false;
+                currentProductIdRef.current = producto.pro_id;
+            }
+
+            // Solo generar si no se ha generado para este producto
+            if (!hasGeneratedRef.current && !codigoResponse) {
+                console.log("🚀 Generando código manualmente para:", producto.pro_nom);
+                hasGeneratedRef.current = true; // Marcar como generado
+                generarCodigoManual(producto);
+            }
+        }
+
+        // Cuando se cierre el modal, resetear para el próximo uso
+        if (!isCuponModalOpen) {
+            hasGeneratedRef.current = false;
+            currentProductIdRef.current = null;
+        }
+    }, [isCuponModalOpen, producto?.pro_id, codigoResponse]); // ← SIN generarCodigoManual en deps
 
     if (!isCuponModalOpen) return null;
 
@@ -32,6 +63,9 @@ export default function CuponModal() {
         handleClose();
         clearSeleccionados();
         invalidarCodigos();
+        // Resetear refs al cerrar
+        hasGeneratedRef.current = false;
+        currentProductIdRef.current = null;
     };
 
     if (loadingGeneracion || !codigoResponse) {
@@ -85,7 +119,10 @@ export default function CuponModal() {
                         <h3 className="text-lg font-bold mb-4">Error al generar cupón</h3>
                         <p className="mb-6">{errorGeneracion}</p>
                         <button
-                            onClick={regenerarCodigo}
+                            onClick={() => {
+                                hasGeneratedRef.current = false; // Permitir regenerar
+                                regenerarCodigo();
+                            }}
                             className="bg-[var(--violet-600)] hover:bg-[var(--violet-700)] px-4 py-2 rounded-lg transition-colors flex items-center gap-2 mx-auto"
                         >
                             <RefreshCw size={16} />
@@ -151,8 +188,8 @@ export default function CuponModal() {
                             }`}
                     >
                         <p className="text-sm font-semibold text-[var(--violet-100)]">Código:</p>
-                        <div className="bg-[var(--violet-600)] rounded-lg text-start">
-                            <p className="text-2xl font-bold tracking-widest">
+                        <div className="bg-[var(--violet-600)] rounded-lg text-start p-3">
+                            <p className="text-2xl font-bold tracking-widest text-center">
                                 {codigoResponse.codigo_cupon}
                             </p>
                         </div>

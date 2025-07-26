@@ -193,7 +193,7 @@ export default function Page() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         <PerfilItemCard text="Tus cupones" icon={Ticket} url="/cupones" />
                         <PerfilItemCard text="Credenciales" icon={User} url="/perfil/credenciales" />
-                        <PerfilItemCard text="Tus restaurantes" icon={Store} url="/restaurantes" />
+                        <PerfilItemCard text="Tus Comercios" icon={Store} url="/restaurantes" />
                     </div>
 
                     {/* Información personal */}

@@ -13,7 +13,6 @@ export const useComercioEncargado = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Solo ejecutar si es encargado autenticado y hay token
         if (isAuthenticated && userRole === 'encargado' && token) {
             const fetchComercioData = async () => {
                 setLoading(true);
@@ -21,9 +20,16 @@ export const useComercioEncargado = () => {
                 
                 try {
                     const data: ComercioEncargadoResponse = await getComecioByEncargado(token);
-                    // Guardar en localStorage
                     localStorage.setItem(COMERCIO_STORAGE_KEY, JSON.stringify(data));
                     
+                    // 🔥 DISPARAR EVENTO MANUAL PARA QUE useComercioData SE ENTERE
+                    window.dispatchEvent(new StorageEvent('storage', {
+                        key: COMERCIO_STORAGE_KEY,
+                        newValue: JSON.stringify(data),
+                        url: window.location.href
+                    }));
+                    
+                    console.log('✅ Datos del comercio guardados y evento disparado');
                 } catch (error: any) {
                     console.error('❌ Error obteniendo datos del comercio:', error);
                     setError(error.message || 'Error al obtener datos del comercio');
@@ -50,14 +56,18 @@ export const useComercioData = () => {
         const loadComercioData = () => {
             try {
                 const storedData = localStorage.getItem(COMERCIO_STORAGE_KEY);
+                console.log('🔍 Buscando datos del comercio:', storedData); // DEBUG
+                
                 if (storedData) {
                     const parsedData: ComercioEncargadoResponse = JSON.parse(storedData);
                     setComercioData(parsedData.sucursal);
+                    console.log('✅ Comercio cargado:', parsedData.sucursal);
                 } else {
+                    console.log('❌ No hay datos del comercio en localStorage');
                     setComercioData(null);
                 }
             } catch (error) {
-                console.error('❌ Error cargando datos del comercio desde localStorage:', error);
+                console.error('❌ Error cargando datos del comercio:', error);
                 localStorage.removeItem(COMERCIO_STORAGE_KEY);
                 setComercioData(null);
             } finally {
@@ -67,9 +77,10 @@ export const useComercioData = () => {
 
         loadComercioData();
 
-        // Escuchar cambios en localStorage (si se actualiza desde otro componente)
+        // Escuchar cambios en localStorage
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === COMERCIO_STORAGE_KEY) {
+                console.log('🔄 Detectado cambio en comercio_encargado_data');
                 loadComercioData();
             }
         };
@@ -78,15 +89,12 @@ export const useComercioData = () => {
         return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
 
-    // Función para limpiar los datos (útil para logout)
-    const clearComercioData = () => {
-        localStorage.removeItem(COMERCIO_STORAGE_KEY);
-        setComercioData(null);
-    };
-
     return {
-        comercioData, // SucursalEncargado | null
+        comercioData,
         loading,
-        clearComercioData
+        clearComercioData: () => {
+            localStorage.removeItem(COMERCIO_STORAGE_KEY);
+            setComercioData(null);
+        }
     };
 };

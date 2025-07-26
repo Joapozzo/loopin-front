@@ -96,30 +96,16 @@ export default function LoginPage() {
         const toastId = toast.loading("Iniciando sesión...");
 
         try {
-            // Intentar hacer login directamente con Firebase para verificar email
-            const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-            const user = userCredential.user;
+            // 🆕 SIMPLIFICADO: Solo usar el hook de login
+            const success = await login(formData.email, formData.password);
 
-            // Verificar si el email está verificado
-            if (!user.emailVerified) {
-                // Si el email no está verificado, NO cerrar sesión
-                // El AuthContext se encargará de manejar el estado
-                setUnverifiedUser(user);
-                setShowEmailVerificationError(true);
-                toast.error("Debes verificar tu email antes de iniciar sesión", { id: toastId });
-                return;
+            if (success) {
+                toast.success("Sesión iniciada correctamente", { id: toastId, duration: 1000 });
+                sessionStorage.setItem('recentLogin', 'true');
+                // La redirección se maneja en el useEffect
+            } else {
+                toast.error("Error al iniciar sesión", { id: toastId });
             }
-
-            // Si el email está verificado, cerrar sesión temporal y usar el hook de auth
-            await auth.signOut();
-
-            // ✅ Usar el hook de login
-            await login(formData.email, formData.password);
-
-            toast.success("Sesión iniciada correctamente", { id: toastId, duration: 1000 });
-            sessionStorage.setItem('recentLogin', 'true');
-
-            // ✅ NOTA: La redirección se maneja ahora en el useEffect de arriba
 
         } catch (error: any) {
             console.error("❌ Error durante el login:", error);
@@ -146,7 +132,7 @@ export default function LoginPage() {
                         toast.error("Error de conexión. Verificá tu internet", { id: toastId });
                         break;
                     default:
-                        toast.error("Error de autenticación: " + error.message , { id: toastId });
+                        toast.error("Error de autenticación: " + error.message, { id: toastId });
                 }
             } else {
                 toast.error("Error inesperado: " + error.message, { id: toastId });
@@ -240,6 +226,50 @@ export default function LoginPage() {
         setShowEmailVerificationError(false);
         setUnverifiedUser(null);
     };
+
+    useEffect(() => {
+        if (!authLoading) {
+            console.log("🔍 LoginPage - Estados:", {
+                emailNotVerified,
+                needsOnboarding,
+                isAuthenticated,
+                userRole
+            });
+
+            // 🆕 PRIORIDAD 1: Si email no está verificado, no redirigir
+            if (emailNotVerified) {
+                console.log("🔒 Email no verificado, mantener en login");
+                return;
+            }
+
+            // PRIORIDAD 2: Si necesita onboarding, redirigir
+            if (needsOnboarding) {
+                console.log("🔄 Necesita onboarding, redirigiendo...");
+                setIsRedirecting(true);
+                setTimeout(() => {
+                    router.push("/onboarding");
+                }, 500);
+                return;
+            }
+
+            // PRIORIDAD 3: Si está autenticado completamente
+            if (isAuthenticated && userRole && !needsOnboarding) {
+                console.log("✅ Usuario completamente autenticado, redirigiendo a app");
+                setIsRedirecting(true);
+                sessionStorage.setItem('recentLogin', 'true');
+                setTimeout(() => {
+                    if (userRole === 'cliente') {
+                        router.push("/home");
+                    } else if (userRole === 'encargado') {
+                        router.push("/res/dashboard");
+                    } else {
+                        router.push("/home");
+                    }
+                }, 1000);
+                return;
+            }
+        }
+    }, [isAuthenticated, authLoading, router, userRole, needsOnboarding, emailNotVerified]);
 
     if (authLoading) {
         return <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">

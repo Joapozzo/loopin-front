@@ -10,6 +10,7 @@ import { CanjeUnificado, TipoHistorialCanje } from '@/types/canje';
 import { CanjeModalPaso1 } from '../modals/CanjeModalPaso1';
 import { CanjeModalPaso2 } from '../modals/CanjeModalPaso2';
 import { createCanjeColumns } from '../CanjeColumn';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface CanjeTableProps extends UseCanjesConfig {
     className?: string;
@@ -26,6 +27,8 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
     className,
     ...canjesConfig
 }) => {
+    const [currentTipoVista, setCurrentTipoVista] = useState<TipoHistorialCanje>("encargado");
+
     const {
         tableConfig,
         tipoVista,
@@ -58,9 +61,14 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
         isCanjeing,
 
         error: hookError,
-    } = useCanjes({ ...canjesConfig, tipoVista: "encargado" });
+    } = useCanjes({
+        ...canjesConfig,
+        tipoVista: currentTipoVista
+    });
 
     const { showToast } = useToast();
+    const router = useRouter();
+    const searchParams = useSearchParams();
 
     // Estados para modales
     const [isPaso1Open, setIsPaso1Open] = useState(false);
@@ -229,6 +237,15 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
         []
     );
 
+    React.useEffect(() => {
+        const shouldOpenModal = searchParams.get('modal') === 'nuevo-canje';
+        if (shouldOpenModal) {
+            setIsPaso1Open(true);
+
+            router.replace('/res/canjes');
+        }
+    }, [searchParams, router]);
+
     // Determinar qué datos de validación mostrar en el paso 2
     const validacionParaPaso2 = datosValidacionCliente || datosValidacionPromocion;
 
@@ -266,8 +283,8 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
                                     key={option.value}
                                     onClick={() => setTipoVista(option.value as TipoHistorialCanje)}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${tipoVista === option.value
-                                            ? 'bg-[var(--violet)] text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-[var(--violet)] text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                     title={option.description}
                                 >

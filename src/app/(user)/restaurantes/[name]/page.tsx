@@ -9,24 +9,58 @@ import Section from "@/components/Section";
 import BackButton from "@/components/ui/buttons/BackButton";
 import Icon from "@/components/ui/Icon";
 import PuntosCounter from "@/components/PuntosCounter";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Bell, CreditCard, Heart, MapPin } from "lucide-react";
 import { useSucursalesCliente } from "@/hooks/useSucursales";
 import { useTarjetas } from "@/hooks/useTarjetas";
+import { useCallback, useEffect, useState } from "react";
+import { Sucursal } from "@/types/sucursal";
+
 
 export default function Page() {
-    const { suc_id, neg_id } = useParams();
-    const { getSucursalById, loading } = useSucursalesCliente();
-    const { isAdherida } = useSucursalesCliente();
+    const { name } = useParams();
+    const router = useRouter();
+    // const { suc_id, neg_id } = useParams();
+    const { getSucursalById, loading, getSucursalByName, isAdherida } = useSucursalesCliente();
+    // const { isAdherida } = useSucursalesCliente();
     const { getTarjetaBySucursal } = useTarjetas();
-    const sucursal = getSucursalById(Number(suc_id), Number(neg_id));
-    
+    // const sucursal = getSucursalById(Number(suc_id), Number(neg_id));
+
+    const [sucursal, setSucursal] = useState<Sucursal | null>(null);
+    const [sucursalIds, setSucursalIds] = useState<{ suc_id: number | null, neg_id: number | null }>({
+        suc_id: null,
+        neg_id: null
+    });
+
+    const searchSucursal = useCallback(() => {
+        if (name && !loading) {
+            const decodedName = decodeURIComponent(name as string);
+            console.log('🔍 Buscando sucursal:', decodedName);
+
+            const foundSucursal = getSucursalByName(decodedName);
+            console.log('🎯 Sucursal encontrada:', foundSucursal);
+
+            if (foundSucursal) {
+                setSucursal(foundSucursal);
+                setSucursalIds({
+                    suc_id: foundSucursal.suc_id,
+                    neg_id: foundSucursal.neg_id
+                });
+            } else {
+                console.warn(`Sucursal no encontrada: ${decodedName}`);
+                router.push('/restaurantes');
+            }
+        }
+    }, [name, loading, getSucursalByName, router]);
+
+    useEffect(() => {
+        searchSucursal();
+    }, [searchSucursal]);
     if (loading || !sucursal) {
         return <div className="text-red">Loading...</div>;
     }
 
     const tarjetaActual = getTarjetaBySucursal(sucursal.suc_id, sucursal.neg_id);
-
     const restauranteIsAdherido = isAdherida(sucursal.suc_id, sucursal.neg_id);
 
     return (
@@ -196,11 +230,10 @@ export default function Page() {
 
                 <Section>
                     <ProductsContainer
-                        negocioId={Number(neg_id)}
-                        sucursalId={Number(suc_id)}
+                        negocioId={Number(sucursalIds.neg_id)}
+                        sucursalId={Number(sucursalIds.suc_id)}
                     />
                 </Section>
-
             </MobileLayout>
         </>
     );

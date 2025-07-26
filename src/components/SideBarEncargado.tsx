@@ -36,12 +36,12 @@ const ManagerSidebar = () => {
     const { logout } = useAuth();
 
     const { nombreCompleto, isLoading: profileLoading } = useUserProfile();
-    const { loading: comercioLoading, error } = useComercioEncargado();
+    const { loading: comercioLoading } = useComercioEncargado();
     const { comercioData, loading: comercioDataLoading } = useComercioData();
     const { isExpanded, toggleSidebar } = useSidebar();
 
     const isLoadingData = profileLoading || comercioLoading || comercioDataLoading;
-
+    
     // Función para obtener el item activo basado en la ruta
     const getActiveItemFromPath = (path: string) => {
         if (path === '/res' || path === '/res/dashboard') return 'dashboard';
@@ -60,9 +60,7 @@ const ManagerSidebar = () => {
     const { clientesTotales } = useClientes({
         initialPageSize: 15,
     });
-    const { productosTotales } = useProductos({
-        initialPageSize: 15,
-    });
+    const { productosTotales } = useProductos();
 
     const { comprasTotales } = useVentas()
     const { canjesTotales } = useCanjes({
@@ -146,14 +144,22 @@ const ManagerSidebar = () => {
     const handleMenuClick = () => { };
 
     return (
-        <aside className={`${isExpanded ? 'w-80' : 'w-20'} fixed top-0 left-0 z-9900 h-screen bg-[var(--violet)] border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 overflow-y-auto`}>
+        <aside
+            className={`${isExpanded ? "w-80" : "w-20"
+                } fixed top-0 left-0 z-9900 h-screen bg-[var(--violet)] border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 overflow-y-auto`}
+        >
             {/* Header del Restaurante */}
-            <div className={`${isExpanded ? 'p-6' : 'p-3'} border-b border-white/20`}>
+            <div
+                className={`${isExpanded ? "p-6" : "p-3"} border-b border-white/20`}
+            >
                 {isExpanded ? (
                     <>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-2xl shadow-md backdrop-blur-sm flex-shrink-0">
-                                <img src={managerData.restaurant.logo} alt={managerData.restaurant.name} />
+                                <img
+                                    src={managerData.restaurant.logo}
+                                    alt={managerData.restaurant.name}
+                                />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-white/80 text-sm">Panel de</p>
@@ -178,18 +184,29 @@ const ManagerSidebar = () => {
                             <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
                                 <div className="flex items-center space-x-2 text-sm text-white/80 mb-2">
                                     <MapPin className="w-4 h-4" />
-                                    <span className="truncate">{managerData.restaurant.address}</span>
+                                    <span className="truncate">
+                                        {managerData.restaurant.address}
+                                    </span>
                                 </div>
                                 <div className="text-xs text-white/60">
-                                    Encargado: <span className="font-medium text-white">{managerData.name}</span>
+                                    Encargado:{" "}
+                                    <span className="font-medium text-white">
+                                        {managerData.name}
+                                    </span>
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-white text-sm hover:bg-white/20 transition-all duration-200 backdrop-blur-sm border border-white/10">
+                                <button
+                                    className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-white text-sm hover:bg-white/20 transition-all duration-200 backdrop-blur-sm border border-white/10"
+                                    onClick={() => router.push("/res/config")}
+                                >
                                     <Settings size={16} />
                                     Configurar
                                 </button>
-                                <button className="flex items-center gap-2 px-3 py-2 bg-red-500/20 rounded-lg text-white text-sm hover:bg-red-500/30 transition-all duration-200 backdrop-blur-sm border border-red-300/20" onClick={handleLogout}>
+                                <button
+                                    className="flex items-center gap-2 px-3 py-2 bg-red-500/20 rounded-lg text-white text-sm hover:bg-red-500/30 transition-all duration-200 backdrop-blur-sm border border-red-300/20"
+                                    onClick={handleLogout}
+                                >
                                     <LogOut size={16} />
                                     Salir
                                 </button>
@@ -199,7 +216,10 @@ const ManagerSidebar = () => {
                 ) : (
                     <div className="flex flex-col items-center space-y-3">
                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-md backdrop-blur-sm">
-                            <img src={managerData.restaurant.logo} alt={managerData.restaurant.name} />
+                            <img
+                                src={managerData.restaurant.logo}
+                                alt={managerData.restaurant.name}
+                            />
                         </div>
                         <button
                             onClick={toggleSidebar}
@@ -219,18 +239,20 @@ const ManagerSidebar = () => {
                             label="Venta"
                             variant="info"
                             icon={<Plus />}
+                            onClick={() => router.push("/res/ventas?modal=nueva-venta")}
                         />
                         <GlassmorphismButton
                             label="Canje"
                             variant="warning"
                             icon={<Plus />}
+                            onClick={() => router.push("/res/canjes?modal=nuevo-canje")}
                         />
                     </div>
                 </div>
             )}
 
             {/* Navegación principal */}
-            <nav className={`flex-1 ${isExpanded ? 'p-6' : 'p-3'}`}>
+            <nav className={`flex-1 ${isExpanded ? "p-6" : "p-3"}`}>
                 {isExpanded && (
                     <h2 className="text-white/70 text-xs uppercase tracking-wider font-semibold mb-4">
                         Panel de Control

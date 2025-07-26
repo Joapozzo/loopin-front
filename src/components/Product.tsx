@@ -12,7 +12,7 @@ interface ProductProps {
 }
 
 export default function Product({ product, puntos, hasRestaurantSelected }: ProductProps) {
-    const { pro_nom, pro_puntos_canje, public_url, suc_nom } = product;
+    const { pro_nom, pro_puntos_canje, pro_url_foto, public_url, suc_nom } = product;
 
     const openModal = useModalStore((state) => state.openModal);
     const setProducto = useProductoStore((state) => state.setProducto);
@@ -26,26 +26,24 @@ export default function Product({ product, puntos, hasRestaurantSelected }: Prod
             toast.error("El producto no está activo");
             return;
         }
-        openModal("cupon");
+        openModal("confirmacion-cupon");
         setProducto(producto);
     };
 
     const alcanza = puntos >= pro_puntos_canje;
     const puntosRestantes = Math.abs(puntos - pro_puntos_canje);
-
-    const imagenFallback = "/food/hamburguesa.png";
-
+    
     return (
-        <div className="w-full h-96 flex flex-col items-center rounded-2xl shadow-md bg-[var(--white-100)] p-4 gap-3">
+        <div className="w-full h-140 flex flex-col items-center rounded-2xl shadow-md bg-[var(--white-100)] p-4 gap-3">
             <span className="text-xs font-semibold text-[var(--violet)] bg-[var(--violet-100)] px-2 py-1 rounded-md -mt-1">
                 {suc_nom}
             </span>
 
-            <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-lg bg-gray-50">
+            <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-lg h-full">
                 <Image
-                    src={public_url || imagenFallback}
+                    src={pro_url_foto}
                     alt="Producto"
-                    className="w-full h-full object-cover"
+                    className="w-full object-cover object-center"
                     width={400}
                     height={400}
                 />

@@ -513,7 +513,7 @@ export default function Hero() {
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="text-lg font-bold truncate">{restauranteSeleccionado.suc_nom}</h3>
-                                        <p className="text-[var(--violet-200)] text-sm">Restaurante activo</p>
+                                        <p className="text-[var(--violet-200)] text-sm">Comercio activo</p>
                                     </div>
                                 </div>
                             </motion.div>
@@ -531,7 +531,7 @@ export default function Hero() {
                                     </div>
                                     <div>
                                         <h3 className="text-2xl font-bold">{sucursales.length}</h3>
-                                        <p className="text-[var(--violet-200)] text-sm">Restaurantes disponibles</p>
+                                        <p className="text-[var(--violet-200)] text-sm">Comercios disponibles</p>
                                     </div>
                                 </div>
                             </motion.div>

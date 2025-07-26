@@ -63,13 +63,14 @@ export const useSucursales = (config: UseSucursalesConfig = {}): UseSucursalesRe
         refresh,
         getSucursalById,
         sucursalesActivas,
-        totalSucursales: sucursales.length
+        totalSucursales: sucursales.length,
     };
 };
 
 export const useSucursalesCliente = (config: UseSucursalesConfig = {}): UseSucursalesReturn & {
     sucursalesAdheridasSet: Set<number>;
     isAdherida: (sucId: number | string, negId: number | string) => boolean
+    getSucursalByName: (name: string) => Sucursal | undefined;
 } => {
     const { enabled = true } = config;
 
@@ -99,6 +100,23 @@ export const useSucursalesCliente = (config: UseSucursalesConfig = {}): UseSucur
         return sucursales.find(sucursal => sucursal.suc_id === idSuc && sucursal.neg_id === idNeg);
     };
 
+    const getSucursalByName = useMemo(() => {
+        return (name: string): Sucursal | undefined => {
+            const normalizedSearchName = name
+                .toLowerCase()
+                .replace(/-/g, ' ')
+                .trim();
+
+            return sucursales.find(sucursal => {
+                const normalizedSucName = sucursal.suc_nom
+                    .toLowerCase()
+                    .trim();
+
+                return normalizedSucName === normalizedSearchName;
+            });
+        };
+    }, [sucursales]);
+
     const sucursalesActivas = useMemo(() => {
         return sucursales.filter(sucursal => sucursal.suc_activo === 1);
     }, [sucursales]);
@@ -117,7 +135,7 @@ export const useSucursalesCliente = (config: UseSucursalesConfig = {}): UseSucur
     const isAdherida = (sucId: number | string, negId: number | string): boolean => {
         const normalizedSucId = typeof sucId === 'string' ? parseInt(sucId, 10) : sucId;
         const normalizedNegId = typeof negId === 'string' ? parseInt(negId, 10) : negId;
-        
+
         return sucursales.some(suc =>
             suc.suc_id === normalizedSucId && suc.neg_id === normalizedNegId
         );
@@ -132,7 +150,8 @@ export const useSucursalesCliente = (config: UseSucursalesConfig = {}): UseSucur
         sucursalesActivas,
         totalSucursales: sucursales.length,
         sucursalesAdheridasSet,
-        isAdherida
+        isAdherida,
+        getSucursalByName
     };
 };
 

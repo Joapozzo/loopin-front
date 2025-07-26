@@ -122,7 +122,7 @@ export default function HeroRest({ title }: HeroRestProps) {
                                     <Input
                                         name="buscar"
                                         type="text"
-                                        placeholder="Busque un restaurante aquí"
+                                        placeholder="Busque un comercio aquí"
                                         icon={<Search />}
                                         value={searchTerm}
                                         onChange={handleChange}
