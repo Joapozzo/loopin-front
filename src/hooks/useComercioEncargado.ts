@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { getComecioByEncargado } from "@/api/restaurantesFetch";
 import { Sucursal, ComercioEncargadoResponse } from "@/types/sucursal";
+import { logger } from "@/utils/logger";
 
 const COMERCIO_STORAGE_KEY = 'comercio_encargado_data';
 
@@ -29,9 +30,9 @@ export const useComercioEncargado = () => {
                         url: window.location.href
                     }));
                     
-                    console.log('✅ Datos del comercio guardados y evento disparado');
+                    logger.log('✅ Datos del comercio guardados y evento disparado');
                 } catch (error: any) {
-                    console.error('❌ Error obteniendo datos del comercio:', error);
+                    logger.error('❌ Error obteniendo datos del comercio:', error);
                     setError(error.message || 'Error al obtener datos del comercio');
                 } finally {
                     setLoading(false);
@@ -56,18 +57,18 @@ export const useComercioData = () => {
         const loadComercioData = () => {
             try {
                 const storedData = localStorage.getItem(COMERCIO_STORAGE_KEY);
-                console.log('🔍 Buscando datos del comercio:', storedData); // DEBUG
+                logger.log('🔍 Buscando datos del comercio:', storedData); // DEBUG
                 
                 if (storedData) {
                     const parsedData: ComercioEncargadoResponse = JSON.parse(storedData);
                     setComercioData(parsedData.sucursal);
-                    console.log('✅ Comercio cargado:', parsedData.sucursal);
+                    logger.log('✅ Comercio cargado:', parsedData.sucursal);
                 } else {
-                    console.log('❌ No hay datos del comercio en localStorage');
+                    logger.log('❌ No hay datos del comercio en localStorage');
                     setComercioData(null);
                 }
             } catch (error) {
-                console.error('❌ Error cargando datos del comercio:', error);
+                logger.error('❌ Error cargando datos del comercio:', error);
                 localStorage.removeItem(COMERCIO_STORAGE_KEY);
                 setComercioData(null);
             } finally {
@@ -80,7 +81,7 @@ export const useComercioData = () => {
         // Escuchar cambios en localStorage
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === COMERCIO_STORAGE_KEY) {
-                console.log('🔄 Detectado cambio en comercio_encargado_data');
+                logger.log('🔄 Detectado cambio en comercio_encargado_data');
                 loadComercioData();
             }
         };

@@ -12,7 +12,7 @@ interface ProductProps {
 }
 
 export default function Product({ product, puntos, hasRestaurantSelected }: ProductProps) {
-    const { pro_nom, pro_puntos_canje, pro_url_foto, public_url, suc_nom } = product;
+    const { pro_nom, pro_puntos_canje, pro_url_foto, suc_nom } = product;
 
     const openModal = useModalStore((state) => state.openModal);
     const setProducto = useProductoStore((state) => state.setProducto);
@@ -32,7 +32,11 @@ export default function Product({ product, puntos, hasRestaurantSelected }: Prod
 
     const alcanza = puntos >= pro_puntos_canje;
     const puntosRestantes = Math.abs(puntos - pro_puntos_canje);
-    
+
+    const isValidSrc = (src: string) => {
+        return src.startsWith("/") || src.startsWith("http");
+    };
+
     return (
         <div className="w-full h-140 flex flex-col items-center rounded-2xl shadow-md bg-[var(--white-100)] p-4 gap-3">
             <span className="text-xs font-semibold text-[var(--violet)] bg-[var(--violet-100)] px-2 py-1 rounded-md -mt-1">
@@ -41,11 +45,11 @@ export default function Product({ product, puntos, hasRestaurantSelected }: Prod
 
             <div className="w-full aspect-square flex items-center justify-center overflow-hidden rounded-lg h-full">
                 <Image
-                    src={pro_url_foto}
+                    src={isValidSrc(product.pro_url_foto) ? product.pro_url_foto : "/placeholder.jpg"}
                     alt="Producto"
                     className="w-full object-cover object-center"
-                    width={400}
-                    height={400}
+                    width={200}
+                    height={200}
                 />
             </div>
 

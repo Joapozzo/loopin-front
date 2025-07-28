@@ -11,6 +11,7 @@ import { createProductoColumns } from '../ProductColumns';
 import ErrorMessage from '../ui/ErrorMessage';
 import { useCategorias } from '@/hooks/useCategoria';
 import { useComercioData } from '@/hooks/useComercioEncargado';
+import { logger } from '@/utils/logger';
 
 interface ProductoTableProps extends UseProductosConfig {
     className?: string;
@@ -45,14 +46,14 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
     const { categorias, isLoading } = useCategorias();
 
     const handleCreate = () => {
-        console.log('🆕 Iniciando creación de producto');
+        logger.log('🆕 Iniciando creación de producto');
         setSelectedProducto(null);
         setError(null);
         setIsFormModalOpen(true);
     };
 
     const handleEdit = (producto: Product) => {
-        console.log('✏️ Iniciando edición de producto:', producto);
+        logger.log('✏️ Iniciando edición de producto:', producto);
         setSelectedProducto(producto);
         setError(null);
         setIsFormModalOpen(true);
@@ -71,7 +72,7 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
 
             } else {
                 // PARA EDITAR: data tiene estructura { data: {...}, foto: ... }
-                console.log('Updating product with object:', data);
+                logger.log('Updating product with object:', data);
 
                 if (!data.data || !data.data.pro_nom || !data.data.pro_puntos_canje ||
                     data.data.pro_cantidad_disp === undefined || !data.data.cat_tip_id ||
@@ -98,10 +99,10 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
 
             setIsFormModalOpen(false);
             setSelectedProducto(null);
-            console.log('✅ Operación completada exitosamente');
+            logger.log('✅ Operación completada exitosamente');
 
         } catch (error) {
-            console.error('❌ Error en handleFormSubmit:', error);
+            logger.error('❌ Error en handleFormSubmit:', error);
             const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
             setError(errorMessage);
             throw error;
@@ -112,21 +113,21 @@ export const ProductoTable: React.FC<ProductoTableProps> = ({
         if (selectedProducto) {
             try {
                 setError(null);
-                console.log('🗑️ Eliminando producto:', selectedProducto.pro_id);
+                logger.log('🗑️ Eliminando producto:', selectedProducto.pro_id);
                 await deleteProducto(selectedProducto.pro_id);
                 setSelectedProducto(null);
                 setIsDeleteDialogOpen(false);
-                console.log('✅ Producto eliminado exitosamente');
+                logger.log('✅ Producto eliminado exitosamente');
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Error al eliminar producto';
-                console.error('❌ Error eliminando producto:', errorMessage);
+                logger.error('❌ Error eliminando producto:', errorMessage);
                 setError(errorMessage);
             }
         }
     };
 
     const handleCloseFormModal = () => {
-        console.log('🚪 Cerrando modal');
+        logger.log('🚪 Cerrando modal');
         setIsFormModalOpen(false);
         setSelectedProducto(null);
         setError(null);

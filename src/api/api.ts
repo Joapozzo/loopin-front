@@ -1,4 +1,5 @@
 import { auth } from '@/auth/firebase';
+import { logger } from '@/utils/logger';
 
 const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -26,7 +27,7 @@ export class ApiClient {
 
             return null;
         } catch (error) {
-            console.error('❌ ApiClient: Error obteniendo token:', error);
+            logger.error('❌ ApiClient: Error obteniendo token:', error);
             
             // Fallback: intentar localStorage si falla Firebase
             const storedToken = localStorage.getItem("token");

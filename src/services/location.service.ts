@@ -4,7 +4,7 @@ import { ProvinciasApiResponse, LocalidadesApiResponse } from '@/types/location'
 export class LocationService {
     private api: ApiClient;
 
-    constructor(baseURL: string) {
+    constructor(baseURL?: string) {
         const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
         this.api = new ApiClient(API_URL);
     }

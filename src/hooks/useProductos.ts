@@ -14,6 +14,7 @@ import {
     FilterParams,
     TableConfig
 } from '../types/common.types';
+import { logger } from '@/utils/logger';
 
 export interface UseProductosConfig {
     endpoints?: Partial<ProductoEndpoints>;
@@ -249,7 +250,7 @@ export const useProductos = (config: UseProductosConfig = {}): UseProductosRetur
             queryClient.invalidateQueries({ queryKey: ['productos', mode] });
         },
         onError: (error) => {
-            console.error('❌ Error creando producto:', error);
+            logger.error('❌ Error creando producto:', error);
         }
     });
 
@@ -271,10 +272,10 @@ export const useProductos = (config: UseProductosConfig = {}): UseProductosRetur
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['productos', mode] });
-            console.log('✅ Producto actualizado exitosamente');
+            logger.log('✅ Producto actualizado exitosamente');
         },
         onError: (error) => {
-            console.error('❌ Error actualizando producto:', error);
+            logger.error('❌ Error actualizando producto:', error);
         }
     });
     const deleteMutation = useMutation({
@@ -288,7 +289,7 @@ export const useProductos = (config: UseProductosConfig = {}): UseProductosRetur
             queryClient.invalidateQueries({ queryKey: ['productos', mode] });
         },
         onError: (error) => {
-            console.error('❌ Error eliminando producto:', error);
+            logger.error('❌ Error eliminando producto:', error);
         }
     });
 

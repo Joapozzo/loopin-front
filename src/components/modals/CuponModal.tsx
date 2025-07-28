@@ -9,6 +9,7 @@ import { useProductoStore } from "@/stores/useProductStore";
 import Button from "../ui/buttons/Button";
 import SpinnerLoader from "../ui/SpinerLoader";
 import { useEffect, useRef } from "react";
+import { logger } from "@/utils/logger";
 
 export default function CuponModal() {
     const clearSeleccionados = useCodigosStore((state) => state.clearSeleccionados);
@@ -44,7 +45,7 @@ export default function CuponModal() {
 
             // Solo generar si no se ha generado para este producto
             if (!hasGeneratedRef.current && !codigoResponse) {
-                console.log("🚀 Generando código manualmente para:", producto.pro_nom);
+                logger.log("🚀 Generando código manualmente para:", producto.pro_nom);
                 hasGeneratedRef.current = true; // Marcar como generado
                 generarCodigoManual(producto);
             }

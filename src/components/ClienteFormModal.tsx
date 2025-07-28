@@ -9,6 +9,7 @@ import { Select } from './ui/inputs/Select';
 import { ClienteCompleto, ClienteFormData } from '../types/clienteCompleto';
 import { Calendar, CreditCard, Mail, MapPin, Phone, User, X } from 'lucide-react';
 import { useAnimatedModal } from '@/hooks/useAnimatedModal';
+import { logger } from '@/utils/logger';
 
 // Schema de validación con Zod
 const clienteSchema = z.object({
@@ -109,7 +110,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
             const date = new Date(dateString);
             return date.toISOString().split('T')[0]; // Convierte a YYYY-MM-DD
         } catch (error) {
-            console.error('Error formateando fecha:', error);
+            logger.error('Error formateando fecha:', error);
             return '';
         }
     };
@@ -136,7 +137,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({
             reset();
             handleClose();
         } catch (error) {
-            console.error('Error al enviar formulario:', error);
+            logger.error('Error al enviar formulario:', error);
         }
     };
 

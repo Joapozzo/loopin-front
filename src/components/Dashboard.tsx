@@ -16,6 +16,7 @@ import { StatCardsSkeleton } from './skeletons/Dashboard/StatCardsSkeleton';
 import { SimpleChartsSkeleton } from './skeletons/Dashboard/SimpleChartSkeleton';
 import { RecentSalesSkeleton } from './skeletons/Dashboard/RecentSalesSkeleton';
 import { NotificationCenterSkeleton } from './skeletons/Dashboard/NotificationCenterSkeleton';
+import { logger } from '@/utils/logger';
 
 const Dashboard: React.FC = () => {
     const {
@@ -32,32 +33,32 @@ const Dashboard: React.FC = () => {
 
     // Handlers para las acciones rápidas
     const handleNewSale = () => {
-        console.log('Abrir modal de nueva venta');
+        logger.log('Abrir modal de nueva venta');
         // Aquí iría la lógica para abrir el modal de nueva venta
     };
 
     const handleConfirmCanjes = () => {
-        console.log('Ir a página de canjes');
+        logger.log('Ir a página de canjes');
         // Aquí iría la navegación a la página de canjes
     };
 
     const handleViewClients = () => {
-        console.log('Ir a página de clientes');
+        logger.log('Ir a página de clientes');
         // Aquí iría la navegación a la página de clientes
     };
 
     const handleGenerateReport = () => {
-        console.log('Generar reporte');
+        logger.log('Generar reporte');
         // Aquí iría la lógica para generar reporte
     };
 
     const handleViewAllSales = () => {
-        console.log('Ver todas las ventas');
+        logger.log('Ver todas las ventas');
         // Aquí iría la navegación a la página de ventas
     };
 
     const handleViewAllNotifications = () => {
-        console.log('Ver todas las notificaciones');
+        logger.log('Ver todas las notificaciones');
         // Aquí iría la navegación a la página de notificaciones
     };
 

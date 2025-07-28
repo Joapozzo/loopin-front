@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import SpinnerLoader from "@/components/ui/SpinerLoader";
+import { logger } from "@/utils/logger";
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
@@ -26,7 +27,7 @@ export default function ProtectedRoute({
             return;
         }
 
-        console.log("🔍 ProtectedRoute - Estados:", {
+        logger.log("🔍 ProtectedRoute - Estados:", {
             isAuthenticated,
             userRole,
             needsOnboarding,
@@ -37,7 +38,7 @@ export default function ProtectedRoute({
 
         // 🚨 CASO 1: Email no verificado
         if (emailNotVerified) {
-            console.log("📧 Email no verificado, redirigiendo a verificación");
+            logger.log("📧 Email no verificado, redirigiendo a verificación");
             router.push("/verify-email");
             return;
         }
@@ -45,10 +46,10 @@ export default function ProtectedRoute({
         // 🚨 CASO 2: Necesita onboarding
         if (needsOnboarding) {
             if (allowOnboarding) {
-                console.log("✅ Onboarding permitido en esta ruta");
+                logger.log("✅ Onboarding permitido en esta ruta");
                 return; // Permitir acceso
             } else {
-                console.log("🔄 Usuario necesita completar onboarding, redirigiendo...");
+                logger.log("🔄 Usuario necesita completar onboarding, redirigiendo...");
                 router.push("/onboarding");
                 return;
             }
@@ -56,14 +57,14 @@ export default function ProtectedRoute({
 
         // 🚨 CASO 3: No autenticado (después de verificar onboarding)
         if (!isAuthenticated) {
-            console.log("🔐 Usuario no autenticado, redirigiendo a login");
+            logger.log("🔐 Usuario no autenticado, redirigiendo a login");
             router.push(redirectTo);
             return;
         }
 
         // 🚨 CASO 4: Verificar rol específico
         if (requireRole && userRole !== requireRole) {
-            console.log(`🚫 Usuario sin permisos. Requiere: ${requireRole}, Actual: ${userRole}`);
+            logger.log(`🚫 Usuario sin permisos. Requiere: ${requireRole}, Actual: ${userRole}`);
             
             // Redirigir según el rol actual
             if (userRole === "cliente") {
@@ -77,7 +78,7 @@ export default function ProtectedRoute({
         }
 
         // ✅ Si llegamos aquí, el usuario tiene acceso
-        console.log("✅ Usuario autorizado para acceder");
+        logger.log("✅ Usuario autorizado para acceder");
 
     }, [isAuthenticated, userRole, isLoading, needsOnboarding, emailNotVerified, router, requireRole, redirectTo, allowOnboarding]);
 

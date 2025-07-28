@@ -1,6 +1,7 @@
 import React from 'react';
 import { Camera, Upload } from 'lucide-react';
 import Button from './ui/buttons/Button'; 
+import { logger } from '@/utils/logger';
 
 interface ConfiguracionLogoCardProps {
     logoUrl: string;
@@ -11,7 +12,7 @@ export const ConfiguracionLogoCard: React.FC<ConfiguracionLogoCardProps> = ({
 }) => {
     const handleLogoChange = () => {
         // TODO: Implementar cambio de logo
-        console.log('Cambiar logo');
+        logger.log('Cambiar logo');
     };
 
     return (

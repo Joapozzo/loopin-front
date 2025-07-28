@@ -11,6 +11,7 @@ import { CanjeModalPaso1 } from '../modals/CanjeModalPaso1';
 import { CanjeModalPaso2 } from '../modals/CanjeModalPaso2';
 import { createCanjeColumns } from '../CanjeColumn';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { logger } from '@/utils/logger';
 
 interface CanjeTableProps extends UseCanjesConfig {
     className?: string;
@@ -102,7 +103,7 @@ export const CanjeTable: React.FC<CanjeTableProps> = ({
             try {
                 setError(null);
                 // TODO: Implementar eliminación cuando esté disponible en el servicio
-                console.log('Eliminar canje:', selectedCanje);
+                logger.log('Eliminar canje:', selectedCanje);
                 showToast('Funcionalidad de anulación en desarrollo', 'info');
                 setSelectedCanje(null);
                 setIsDeleteDialogOpen(false);

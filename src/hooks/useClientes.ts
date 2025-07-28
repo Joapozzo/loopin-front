@@ -15,6 +15,7 @@ import {
     FilterParams,
     TableConfig
 } from '../types/common.types';
+import { logger } from '@/utils/logger';
 
 export interface UseClientesConfig {
     endpoints?: Partial<ClienteEndpoints>;
@@ -195,7 +196,7 @@ export const useClientes = (config: UseClientesConfig = {}): UseClientesReturn =
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
         onError: (error) => {
-            console.error('❌ Error creando cliente:', error);
+            logger.error('❌ Error creando cliente:', error);
             throw error;
         }
     });
@@ -209,7 +210,7 @@ export const useClientes = (config: UseClientesConfig = {}): UseClientesReturn =
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
         onError: (error) => {
-            console.error('❌ Error actualizando cliente:', error);
+            logger.error('❌ Error actualizando cliente:', error);
             throw error;
         }
     });
@@ -223,7 +224,7 @@ export const useClientes = (config: UseClientesConfig = {}): UseClientesReturn =
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
         },
         onError: (error) => {
-            console.error('❌ Error eliminando cliente:', error);
+            logger.error('❌ Error eliminando cliente:', error);
             throw error;
         }
     });
@@ -278,13 +279,13 @@ export const useClientes = (config: UseClientesConfig = {}): UseClientesReturn =
 
     // Validar DNI - No disponible en este tipo de cliente
     const validateDniCliente = useCallback((dni: string): boolean => {
-        console.warn('validateDniCliente: DNI no disponible en ClienteCompleto');
+        logger.warn('validateDniCliente: DNI no disponible en ClienteCompleto');
         return false;
     }, []);
 
     // Obtener cliente por DNI - No disponible en este tipo de cliente
     const getClienteByDni = useCallback((dni: string): ClienteCompleto | null => {
-        console.warn('getClienteByDni: DNI no disponible en ClienteCompleto');
+        logger.warn('getClienteByDni: DNI no disponible en ClienteCompleto');
         return null;
     }, []);
 

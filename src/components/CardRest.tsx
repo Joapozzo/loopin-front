@@ -26,13 +26,17 @@ export default function CardRest({ restaurant, selected }: CardRestProps) {
         openModal(typeModal);
     };
 
+    const isValidSrc = (src: string) => {
+        return src.startsWith("/") || src.startsWith("http");
+    };
+
     return (
         <Link href={createRestaurantUrl(suc_nom)}
             className="flex items-center gap-4 justify-between bg-[var(--violet-50)] rounded-lg px-5 py-6 w-full hover:scale-105 transition-all duration-300 ease-in-out hover:bg-[var(--violet-100)] mt-6"
         >
             <div className="flex items-center gap-4 flex-1 min-w-0">
                 <Image
-                    src={suc_url_foto}
+                    src={isValidSrc(suc_url_foto) ? suc_url_foto : "/placeholder.jpg"}
                     alt="pizza"
                     className="w-30 h-20 object-contain flex-shrink-0 bg-white rounded-lg p-2 shadow-sm border border-gray-100"
                     width={200}

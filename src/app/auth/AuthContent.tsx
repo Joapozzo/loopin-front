@@ -10,6 +10,7 @@ import Input from "@/components/ui/inputs/Input";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import SpinnerLoader from "@/components/ui/SpinerLoader";
+import { logger } from '@/utils/logger';
 
 export default function AuthContent() {
     const searchParams = useSearchParams();
@@ -36,7 +37,7 @@ export default function AuthContent() {
                     toast.success('Email verificado correctamente');
                 })
                 .catch((err) => {
-                    console.error('Error verifying email:', err);
+                    logger.error('Error verifying email:', err);
                     setError('No se pudo verificar el correo. El enlace puede haber expirado.');
                     setStatus('error');
                     toast.error('Error al verificar el email');
@@ -50,7 +51,7 @@ export default function AuthContent() {
                     setStatus('idle');
                 })
                 .catch((err) => {
-                    console.error('Error verifying reset code:', err);
+                    logger.error('Error verifying reset code:', err);
                     setError('El enlace para restablecer la contraseña no es válido o ha expirado.');
                     setStatus('error');
                     toast.error('Enlace inválido o expirado');
@@ -82,7 +83,7 @@ export default function AuthContent() {
                 router.push('/login');
             }, 3000);
         } catch (err: any) {
-            console.error('Error resetting password:', err);
+            logger.error('Error resetting password:', err);
             let errorMessage = 'Error al restablecer la contraseña';
 
             if (err.code === 'auth/weak-password') {

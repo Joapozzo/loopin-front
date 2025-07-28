@@ -16,17 +16,15 @@ import { logger } from "@/utils/logger";
 
 export default function LoginPage() {
     const router = useRouter();
-    
-    // Hook de auth actualizado
+    // ✅ Incluir emailNotVerified en la destructuración
     const {
         isAuthenticated,
         isLoading: authLoading,
         userRole,
         login,
         needsOnboarding,
-        emailNotVerified,
-        loginWithGoogle,
-        hasLoadedFromStorage // Nuevo estado del store
+        emailNotVerified, // 🆕 Nuevo flag
+        loginWithGoogle
     } = useAuth();
 
     const [showPassword, setShowPassword] = useState(false);
@@ -40,64 +38,41 @@ export default function LoginPage() {
     const [showEmailVerificationError, setShowEmailVerificationError] = useState(false);
     const [unverifiedUser, setUnverifiedUser] = useState<any>(null);
 
-    // Effect para manejar redirecciones
     useEffect(() => {
-        // Solo proceder si ya cargamos desde cookies/storage y no estamos en loading
-        if (!hasLoadedFromStorage || authLoading) {
-            return;
-        }
+        if (!authLoading) {
+            // 🆕 PRIORIDAD 1: Si email no está verificado, no redirigir
+            if (emailNotVerified) {
+                logger.log("🔒 Email no verificado, mantener en login");
+                return;
+            }
 
-        logger.log("🔍 LoginPage - Estados actuales:", {
-            emailNotVerified,
-            needsOnboarding,
-            isAuthenticated,
-            userRole,
-            hasLoadedFromStorage,
-            authLoading
-        });
+            // PRIORIDAD 2: Si necesita onboarding, redirigir
+            if (needsOnboarding) {
+                setIsRedirecting(true);
+                setTimeout(() => {
+                    router.push("/onboarding");
+                }, 500);
+                return;
+            }
 
-        // PRIORIDAD 1: Si email no está verificado, no redirigir
-        if (emailNotVerified) {
-            logger.log("🔒 Email no verificado, mantener en login");
-            return;
+            // PRIORIDAD 3: Si está autenticado y NO necesita onboarding
+            if (isAuthenticated && !needsOnboarding) {
+                setIsRedirecting(true);
+                sessionStorage.setItem('recentLogin', 'true');
+                setTimeout(() => {
+                    if (userRole === 'cliente') {
+                        router.push("/home");
+                    } else if (userRole === 'encargado') {
+                        router.push("/res/dashboard");
+                    } else {
+                        // Fallback si no tiene rol definido
+                        router.push("/home");
+                    }
+                }, 1000);
+                return;
+            }
         }
-
-        // PRIORIDAD 2: Si necesita onboarding, redirigir
-        if (needsOnboarding) {
-            logger.log("🔄 Necesita onboarding, redirigiendo...");
-            setIsRedirecting(true);
-            setTimeout(() => {
-                router.push("/onboarding");
-            }, 500);
-            return;
-        }
-
-        // PRIORIDAD 3: Si está completamente autenticado
-        if (isAuthenticated && userRole && !needsOnboarding) {
-            logger.log("✅ Usuario completamente autenticado, redirigiendo a app");
-            setIsRedirecting(true);
-            sessionStorage.setItem('recentLogin', 'true');
-            
-            setTimeout(() => {
-                if (userRole === 'cliente') {
-                    router.push("/home");
-                } else if (userRole === 'encargado') {
-                    router.push("/res/dashboard");
-                } else {
-                    router.push("/home");
-                }
-            }, 1000);
-            return;
-        }
-    }, [
-        isAuthenticated, 
-        authLoading, 
-        router, 
-        userRole, 
-        needsOnboarding, 
-        emailNotVerified,
-        hasLoadedFromStorage // Dependencia importante
-    ]);
+    }, [isAuthenticated, authLoading, router, userRole, needsOnboarding, emailNotVerified]); // 🆕 Agregar emailNotVerified
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({
@@ -122,7 +97,9 @@ export default function LoginPage() {
         const toastId = toast.loading("Iniciando sesión...");
 
         try {
+            // 🆕 SIMPLIFICADO: Solo usar el hook de login
             const success = await login(formData.email, formData.password);
+
             if (success) {
                 toast.success("Sesión iniciada correctamente", { id: toastId, duration: 1000 });
                 sessionStorage.setItem('recentLogin', 'true');
@@ -130,8 +107,10 @@ export default function LoginPage() {
             } else {
                 toast.error("Error al iniciar sesión", { id: toastId });
             }
+
         } catch (error: any) {
             logger.error("❌ Error durante el login:", error);
+
             if (error.code) {
                 switch (error.code) {
                     case 'auth/user-not-found':
@@ -179,6 +158,8 @@ export default function LoginPage() {
 
             logger.log("🔍 Usuario de Google:", user.email);
 
+            // 🆕 NO HACER SIGNOUT - Usar directamente el usuario de Google
+            // Los emails de Google ya están verificados automáticamente
             // Usar nuestro hook de login con Google DIRECTAMENTE
             if (loginWithGoogle) {
                 await loginWithGoogle(user);
@@ -192,6 +173,7 @@ export default function LoginPage() {
 
         } catch (error: any) {
             logger.error("❌ Error durante login con Google:", error);
+
             if (error.code) {
                 switch (error.code) {
                     case 'auth/popup-closed-by-user':
@@ -246,54 +228,87 @@ export default function LoginPage() {
         setUnverifiedUser(null);
     };
 
-    // Mostrar spinner si estamos cargando datos iniciales
-    if (!hasLoadedFromStorage || authLoading) {
-        return (
-            <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
-                <div className="text-center">
-                    <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
-                    <p className="mt-4 text-[var(--violet)] font-semibold">
-                        Cargando...
-                    </p>
-                </div>
-            </div>
-        );
+    useEffect(() => {
+        if (!authLoading) {
+            logger.log("🔍 LoginPage - Estados:", {
+                emailNotVerified,
+                needsOnboarding,
+                isAuthenticated,
+                userRole
+            });
+
+            // 🆕 PRIORIDAD 1: Si email no está verificado, no redirigir
+            if (emailNotVerified) {
+                logger.log("🔒 Email no verificado, mantener en login");
+                return;
+            }
+
+            // PRIORIDAD 2: Si necesita onboarding, redirigir
+            if (needsOnboarding) {
+                logger.log("🔄 Necesita onboarding, redirigiendo...");
+                setIsRedirecting(true);
+                setTimeout(() => {
+                    router.push("/onboarding");
+                }, 500);
+                return;
+            }
+
+            // PRIORIDAD 3: Si está autenticado completamente
+            if (isAuthenticated && userRole && !needsOnboarding) {
+                logger.log("✅ Usuario completamente autenticado, redirigiendo a app");
+                setIsRedirecting(true);
+                sessionStorage.setItem('recentLogin', 'true');
+                setTimeout(() => {
+                    if (userRole === 'cliente') {
+                        router.push("/home");
+                    } else if (userRole === 'encargado') {
+                        router.push("/res/dashboard");
+                    } else {
+                        router.push("/home");
+                    }
+                }, 1000);
+                return;
+            }
+        }
+    }, [isAuthenticated, authLoading, router, userRole, needsOnboarding, emailNotVerified]);
+
+    if (authLoading) {
+        return <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
+            <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
+        </div>
     }
 
-    // Mostrar spinner de redirección
     if (isRedirecting) {
-        return (
-            <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
-                <div className="text-center">
-                    <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
-                    <p className="mt-4 text-[var(--violet)] font-semibold">
-                        {needsOnboarding ? "Completando configuración..." : "Redirigiendo..."}
-                    </p>
-                </div>
+        return <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
+            <div className="text-center">
+                <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
+                <p className="mt-4 text-[var(--violet)] font-semibold">
+                    {needsOnboarding ? "Completando configuración..." : "Redirigiendo..."}
+                </p>
             </div>
-        );
+        </div>
     }
 
     return (
         <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
             <style jsx>{`
-                :root {
-                    --violet: #8b5cf6;
-                    --violet-50: #f3f0ff;
-                    --violet-200: #c4b5fd;
-                    --rose: #f43f5e;
-                    --white: #ffffff;
-                    --black: #1f2937;
-                    --gray: #9ca3af;
-                }
-            `}</style>
+          :root {
+            --violet: #8b5cf6;
+            --violet-50: #f3f0ff;
+            --violet-200: #c4b5fd;
+            --rose: #f43f5e;
+            --white: #ffffff;
+            --black: #1f2937;
+            --gray: #9ca3af;
+          }
+        `}</style>
 
             {/* Elementos decorativos */}
             <div className="absolute top-20 left-10 w-20 h-20 bg-[var(--rose)]/20 rounded-full animate-pulse"></div>
             <div className="absolute bottom-20 right-10 w-32 h-32 bg-[var(--violet)]/20 rounded-full animate-pulse delay-1000"></div>
 
             <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden grid lg:grid-cols-2 z-10 relative">
-                {/* Modal automático si emailNotVerified es true */}
+                {/* 🆕 Modal automático si emailNotVerified es true */}
                 {(showEmailVerificationError || emailNotVerified) && (
                     <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-auto shadow-xl">
@@ -301,12 +316,14 @@ export default function LoginPage() {
                                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
                                     <AlertCircle className="w-8 h-8 text-red-600" />
                                 </div>
+
                                 <div>
                                     <h3 className="text-xl font-bold text-red-600 mb-2">
                                         Email no verificado
                                     </h3>
                                     <p className="text-gray-600 text-sm">
-                                        Necesitas verificar tu email antes de poder iniciar sesión.
+                                        Necesitas verificar tu email antes de poder iniciar
+                                        sesión.
                                     </p>
                                     <p className="text-gray-600 text-sm mt-2">
                                         Email:{" "}
@@ -315,6 +332,7 @@ export default function LoginPage() {
                                         </span>
                                     </p>
                                 </div>
+
                                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                     <p className="text-xs text-yellow-700">
                                         1. Revisá tu bandeja de entrada (y spam)
@@ -324,6 +342,7 @@ export default function LoginPage() {
                                         3. Volvé acá e iniciá sesión nuevamente
                                     </p>
                                 </div>
+
                                 <div className="space-y-2">
                                     {unverifiedUser && (
                                         <Button
@@ -338,6 +357,7 @@ export default function LoginPage() {
                                             Reenviar email de verificación
                                         </Button>
                                     )}
+
                                     <Button
                                         onClick={closeVerificationError}
                                         variant="outline"
@@ -438,7 +458,6 @@ export default function LoginPage() {
                                     onChange={handleInputChange}
                                 />
                             </div>
-
                             <div>
                                 <label className="block text-sm font-semibold text-[var(--violet)] mb-2">
                                     Contraseña
@@ -460,7 +479,6 @@ export default function LoginPage() {
                                     </button>
                                 </div>
                             </div>
-
                             <div className="text-right">
                                 <Link
                                     className="text-[var(--violet)] hover:text-[var(--violet-200)] text-sm font-semibold transition-colors"
@@ -469,7 +487,6 @@ export default function LoginPage() {
                                     ¿Olvidaste tu contraseña?
                                 </Link>
                             </div>
-
                             <Button
                                 onClick={handleSubmit}
                                 variant="primary"

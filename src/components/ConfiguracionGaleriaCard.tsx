@@ -1,6 +1,7 @@
 import React from 'react';
 import { Images, Plus, X } from 'lucide-react';
 import Button from './ui/buttons/Button'; 
+import { logger } from '@/utils/logger';
 
 interface ConfiguracionGaleriaCardProps {
     imagenes: string[];
@@ -11,12 +12,12 @@ export const ConfiguracionGaleriaCard: React.FC<ConfiguracionGaleriaCardProps> =
 }) => {
     const handleAgregarImagen = () => {
         // TODO: Implementar agregar imagen
-        console.log('Agregar imagen');
+        logger.log('Agregar imagen');
     };
 
     const handleEliminarImagen = (index: number) => {
         // TODO: Implementar eliminar imagen
-        console.log('Eliminar imagen', index);
+        logger.log('Eliminar imagen', index);
     };
 
     const maxImagenes = 4;

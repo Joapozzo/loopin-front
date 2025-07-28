@@ -15,6 +15,7 @@ import { useSucursalesCliente } from "@/hooks/useSucursales";
 import { useTarjetas } from "@/hooks/useTarjetas";
 import { useCallback, useEffect, useState } from "react";
 import { Sucursal } from "@/types/sucursal";
+import { logger } from "@/utils/logger";
 
 
 export default function Page() {
@@ -35,10 +36,10 @@ export default function Page() {
     const searchSucursal = useCallback(() => {
         if (name && !loading) {
             const decodedName = decodeURIComponent(name as string);
-            console.log('🔍 Buscando sucursal:', decodedName);
+            logger.log('🔍 Buscando sucursal:', decodedName);
 
             const foundSucursal = getSucursalByName(decodedName);
-            console.log('🎯 Sucursal encontrada:', foundSucursal);
+            logger.log('🎯 Sucursal encontrada:', foundSucursal);
 
             if (foundSucursal) {
                 setSucursal(foundSucursal);
@@ -47,7 +48,7 @@ export default function Page() {
                     neg_id: foundSucursal.neg_id
                 });
             } else {
-                console.warn(`Sucursal no encontrada: ${decodedName}`);
+                logger.warn(`Sucursal no encontrada: ${decodedName}`);
                 router.push('/restaurantes');
             }
         }

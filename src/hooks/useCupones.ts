@@ -19,6 +19,7 @@ import {
     FilterParams,
     TableConfig
 } from '@/types/common.types';
+import { logger } from '@/utils/logger';
 
 export interface UseCuponesConfig {
     encargadoId: number;
@@ -331,7 +332,7 @@ export const useCupones = (config: UseCuponesConfig): UseCuponesReturn => {
     const updateMutation = useMutation({
         mutationFn: async ({ id, tipo, data }: { id: string; tipo: 'promocional' | 'puntos'; data: any }) => {
             // TODO: Implementar cuando tengamos los endpoints
-            console.log('Updating cupon:', { id, tipo, data });
+            logger.log('Updating cupon:', { id, tipo, data });
             throw new Error('Endpoint no implementado');
         },
         onSuccess: () => {
@@ -343,7 +344,7 @@ export const useCupones = (config: UseCuponesConfig): UseCuponesReturn => {
     const deleteMutation = useMutation({
         mutationFn: async ({ id, tipo }: { id: string; tipo: 'promocional' | 'puntos' }) => {
             // TODO: Implementar cuando tengamos los endpoints
-            console.log('Deleting cupon:', { id, tipo });
+            logger.log('Deleting cupon:', { id, tipo });
             throw new Error('Endpoint no implementado');
         },
         onSuccess: () => {
