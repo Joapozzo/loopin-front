@@ -1,3 +1,7 @@
+// ============================================================================
+// LOGIN PAGE SIMPLIFICADO
+// ============================================================================
+
 "use client";
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Mail, Lock, ArrowLeft, Star, Heart, AlertCircle, RefreshCw } from "lucide-react";
@@ -10,94 +14,96 @@ import GmailIcon from "@/components/icons/Gmail";
 import SpinnerLoader from "@/components/ui/SpinerLoader";
 import Image from "next/image";
 import Link from "next/link";
-import { auth, googleProvider } from "@/auth/firebase";
-import { signInWithEmailAndPassword, sendEmailVerification, signInWithPopup } from "firebase/auth";
 import { logger } from "@/utils/logger";
+import { signOut } from "firebase/auth";
+import { auth } from "@/auth/firebase";
 
 export default function LoginPage() {
     const router = useRouter();
-    
-    // Hook de auth actualizado
     const {
-        isAuthenticated,
         isLoading: authLoading,
-        userRole,
-        login,
+        isAuthenticated,
         needsOnboarding,
         emailNotVerified,
+        userRole,
+        hasLoadedFromStorage,
+        login,
         loginWithGoogle,
-        hasLoadedFromStorage // Nuevo estado del store
+        resendVerificationEmail
     } = useAuth();
 
+    // Estados locales
     const [showPassword, setShowPassword] = useState(false);
-    const [formData, setFormData] = useState({
-        email: "",
-        password: ""
-    });
+    const [formData, setFormData] = useState({ email: "", password: "" });
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    const [isRedirecting, setIsRedirecting] = useState(false);
-    const [showEmailVerificationError, setShowEmailVerificationError] = useState(false);
-    const [unverifiedUser, setUnverifiedUser] = useState<any>(null);
+    const [hasRedirected, setHasRedirected] = useState(false);
 
-    // Effect para manejar redirecciones
+    // ============================================================================
+    // MANEJO DE REDIRECCIONES
+    // ============================================================================
     useEffect(() => {
-        // Solo proceder si ya cargamos desde cookies/storage y no estamos en loading
+        // No proceder hasta cargar desde storage
         if (!hasLoadedFromStorage || authLoading) {
             return;
         }
 
-        logger.log("🔍 LoginPage - Estados actuales:", {
-            emailNotVerified,
-            needsOnboarding,
+        // Prevenir múltiples redirecciones
+        if (hasRedirected) {
+            return;
+        }
+
+        logger.log("🔍 LoginPage - Estado actual:", {
             isAuthenticated,
+            needsOnboarding,
+            emailNotVerified,
             userRole,
-            hasLoadedFromStorage,
-            authLoading
+            hasRedirected
         });
 
-        // PRIORIDAD 1: Si email no está verificado, no redirigir
+        // Si email no verificado, mostrar modal (no redirigir)
         if (emailNotVerified) {
-            logger.log("🔒 Email no verificado, mantener en login");
+            logger.log("🔒 Email no verificado - mostrar modal");
             return;
         }
 
-        // PRIORIDAD 2: Si necesita onboarding, redirigir
+        // Si necesita onboarding, redirigir UNA SOLA VEZ
         if (needsOnboarding) {
-            logger.log("🔄 Necesita onboarding, redirigiendo...");
-            setIsRedirecting(true);
-            setTimeout(() => {
-                router.push("/onboarding");
-            }, 500);
+            logger.log("🔄 Redirigiendo a onboarding");
+            setHasRedirected(true);
+            router.push("/onboarding");
             return;
         }
 
-        // PRIORIDAD 3: Si está completamente autenticado
-        if (isAuthenticated && userRole && !needsOnboarding) {
-            logger.log("✅ Usuario completamente autenticado, redirigiendo a app");
-            setIsRedirecting(true);
-            sessionStorage.setItem('recentLogin', 'true');
-            
-            setTimeout(() => {
-                if (userRole === 'cliente') {
-                    router.push("/home");
-                } else if (userRole === 'encargado') {
-                    router.push("/res/dashboard");
-                } else {
-                    router.push("/home");
-                }
-            }, 1000);
+        // Si está completamente autenticado, redirigir según rol UNA SOLA VEZ
+        if (isAuthenticated && userRole) {
+            logger.log("✅ Usuario autenticado - redirigiendo");
+            setHasRedirected(true);
+
+            const targetPath = userRole === 'cliente' ? '/home' : '/res/dashboard';
+            logger.log(`🎯 Redirigiendo a: ${targetPath}`);
+
+            router.push(targetPath);
             return;
         }
     }, [
-        isAuthenticated, 
-        authLoading, 
-        router, 
-        userRole, 
-        needsOnboarding, 
+        hasLoadedFromStorage,
+        authLoading,
+        isAuthenticated,
+        needsOnboarding,
         emailNotVerified,
-        hasLoadedFromStorage // Dependencia importante
+        userRole,
+        router,
+        hasRedirected // ← IMPORTANTE: agregar esta dependencia
     ]);
+
+    // Reset hasRedirected cuando cambian los estados importantes
+    useEffect(() => {
+        setHasRedirected(false);
+    }, [isAuthenticated, needsOnboarding, userRole]);
+    // ============================================================================
+    // HANDLERS
+    // ============================================================================
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({
@@ -107,14 +113,15 @@ export default function LoginPage() {
     };
 
     const handleSubmit = async () => {
+        // Validaciones
         if (!formData.email || !formData.password) {
-            toast.error("Completá todos los campos.");
+            toast.error("Completá todos los campos");
             return;
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
-            toast.error("Ingresá un email válido.");
+            toast.error("Ingresá un email válido");
             return;
         }
 
@@ -122,43 +129,71 @@ export default function LoginPage() {
         const toastId = toast.loading("Iniciando sesión...");
 
         try {
-            const success = await login(formData.email, formData.password);
-            if (success) {
-                toast.success("Sesión iniciada correctamente", { id: toastId, duration: 1000 });
-                sessionStorage.setItem('recentLogin', 'true');
-                // La redirección se maneja en el useEffect
-            } else {
-                toast.error("Error al iniciar sesión", { id: toastId });
-            }
+            await login(formData.email, formData.password);
+            toast.success("Sesión iniciada correctamente", { id: toastId });
+            // La redirección se maneja automáticamente en useEffect
         } catch (error: any) {
-            logger.error("❌ Error durante el login:", error);
+            logger.error("❌ Error en login:", error);
+
+            // Manejo de errores específicos
+            let errorMessage = "Error al iniciar sesión";
+
+            // 🔍 VERIFICAR SI ES ERROR DE CLOUD FUNCTION
+            if (error.message && error.message.includes('EMAIL_NOT_VERIFIED')) {
+                // ✅ ERROR DE EMAIL NO VERIFICADO
+                errorMessage = "Tu email no está verificado. Revisá tu bandeja de entrada y hacé clic en el enlace de verificación.";
+                toast.error(errorMessage, {
+                    id: toastId,
+                    duration: 6000 // Más tiempo para leer el mensaje
+                });
+
+                // 📧 Opcional: mostrar botón para reenviar email
+                // setTimeout(() => {
+                //     toast(
+                //         "¿No recibiste el email? Podés reenviar el enlace de verificación.",
+                //         {
+                //             duration: 8000,
+                //             icon: "📧",
+                //         }
+                //     );
+                // }, 1000);
+
+                return; // Salir temprano para no mostrar el error genérico
+            }
+
+            // 🔍 MANEJO DE OTROS ERRORES DE FIREBASE
             if (error.code) {
                 switch (error.code) {
                     case 'auth/user-not-found':
-                        toast.error("No existe una cuenta con este email", { id: toastId });
+                        errorMessage = "No existe una cuenta con este email";
                         break;
                     case 'auth/wrong-password':
                     case 'auth/invalid-credential':
-                        toast.error("Contraseña incorrecta", { id: toastId });
+                        errorMessage = "Contraseña incorrecta";
                         break;
                     case 'auth/invalid-email':
-                        toast.error("Email inválido", { id: toastId });
+                        errorMessage = "Email inválido";
                         break;
                     case 'auth/user-disabled':
-                        toast.error("Esta cuenta ha sido deshabilitada", { id: toastId });
+                        errorMessage = "Esta cuenta ha sido deshabilitada";
                         break;
                     case 'auth/too-many-requests':
-                        toast.error("Demasiados intentos fallidos. Intentá más tarde", { id: toastId });
+                        errorMessage = "Demasiados intentos. Intentá más tarde";
                         break;
-                    case 'auth/network-request-failed':
-                        toast.error("Error de conexión. Verificá tu internet", { id: toastId });
+                    case 'auth/internal-error':
+                        // Manejar errores internos de Firebase
+                        if (error.message && error.message.includes('EMAIL_NOT_VERIFIED')) {
+                            errorMessage = "Tu email no está verificado. Revisá tu bandeja de entrada.";
+                        } else {
+                            errorMessage = "Error interno del servidor. Intentá más tarde.";
+                        }
                         break;
                     default:
-                        toast.error("Error de autenticación: " + error.message, { id: toastId });
+                        errorMessage = "Error de autenticación";
                 }
-            } else {
-                toast.error("Error inesperado: " + error.message, { id: toastId });
             }
+
+            toast.error(errorMessage, { id: toastId });
         } finally {
             setIsLoading(false);
         }
@@ -169,132 +204,77 @@ export default function LoginPage() {
         const toastId = toast.loading("Iniciando sesión con Google...");
 
         try {
-            // Configurar el provider para solicitar información adicional
-            googleProvider.addScope('email');
-            googleProvider.addScope('profile');
-
-            // Abrir popup de Google
-            const result = await signInWithPopup(auth, googleProvider);
-            const user = result.user;
-
-            logger.log("🔍 Usuario de Google:", user.email);
-
-            // Usar nuestro hook de login con Google DIRECTAMENTE
-            if (loginWithGoogle) {
-                await loginWithGoogle(user);
-            } else {
-                toast.error("Función de Google login no disponible", { id: toastId });
-                return;
-            }
-
-            toast.success("Sesión iniciada con Google", { id: toastId, duration: 1000 });
-            sessionStorage.setItem('recentLogin', 'true');
-
+            await loginWithGoogle();
+            toast.success("Sesión iniciada con Google", { id: toastId });
+            // La redirección se maneja automáticamente en useEffect
         } catch (error: any) {
-            logger.error("❌ Error durante login con Google:", error);
+            logger.error("❌ Error en Google login:", error);
+
+            let errorMessage = "Error con Google login";
+
             if (error.code) {
                 switch (error.code) {
                     case 'auth/popup-closed-by-user':
-                        toast.error("Login cancelado", { id: toastId });
+                        errorMessage = "Login cancelado";
                         break;
                     case 'auth/popup-blocked':
-                        toast.error("Popup bloqueado. Permitir popups para este sitio", { id: toastId });
+                        errorMessage = "Popup bloqueado. Permitir popups para este sitio";
                         break;
                     case 'auth/network-request-failed':
-                        toast.error("Error de conexión", { id: toastId });
-                        break;
-                    case 'auth/too-many-requests':
-                        toast.error("Demasiados intentos. Intentá más tarde", { id: toastId });
+                        errorMessage = "Error de conexión";
                         break;
                     default:
-                        toast.error("Error con Google login: " + error.message, { id: toastId });
+                        errorMessage = "Error con Google login";
                 }
-            } else {
-                toast.error("Error inesperado con Google", { id: toastId });
             }
+
+            toast.error(errorMessage, { id: toastId });
         } finally {
             setIsGoogleLoading(false);
         }
     };
 
-    const resendVerificationEmail = async () => {
-        if (!unverifiedUser) return;
+    // ============================================================================
+    // RENDERS CONDICIONALES
+    // ============================================================================
 
-        const toastId = toast.loading("Reenviando email de verificación...");
-
-        try {
-            await sendEmailVerification(unverifiedUser, {
-                url: `${window.location.origin}/login`,
-                handleCodeInApp: false
-            });
-            toast.success("Email de verificación reenviado. Revisá tu bandeja de entrada.", { id: toastId });
-        } catch (error) {
-            toast.error("Error al reenviar el email", { id: toastId });
-        }
-    };
-
-    const goToLandingPage = () => {
-        router.push("/");
-    }
-
-    const goToRegisterPage = () => {
-        router.push("/register");
-    }
-
-    const closeVerificationError = () => {
-        setShowEmailVerificationError(false);
-        setUnverifiedUser(null);
-    };
-
-    // Mostrar spinner si estamos cargando datos iniciales
+    // Loading inicial
     if (!hasLoadedFromStorage || authLoading) {
         return (
             <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
                 <div className="text-center">
                     <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
-                    <p className="mt-4 text-[var(--violet)] font-semibold">
-                        Cargando...
-                    </p>
+                    <p className="mt-4 text-[var(--violet)] font-semibold">Cargando...</p>
                 </div>
             </div>
         );
     }
 
-    // Mostrar spinner de redirección
-    if (isRedirecting) {
-        return (
-            <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
-                <div className="text-center">
-                    <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
-                    <p className="mt-4 text-[var(--violet)] font-semibold">
-                        {needsOnboarding ? "Completando configuración..." : "Redirigiendo..."}
-                    </p>
-                </div>
-            </div>
-        );
-    }
+    // ============================================================================
+    // RENDER PRINCIPAL
+    // ============================================================================
 
     return (
         <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
             <style jsx>{`
-                :root {
-                    --violet: #8b5cf6;
-                    --violet-50: #f3f0ff;
-                    --violet-200: #c4b5fd;
-                    --rose: #f43f5e;
-                    --white: #ffffff;
-                    --black: #1f2937;
-                    --gray: #9ca3af;
-                }
-            `}</style>
+        :root {
+          --violet: #8b5cf6;
+          --violet-50: #f3f0ff;
+          --violet-200: #c4b5fd;
+          --rose: #f43f5e;
+          --white: #ffffff;
+          --black: #1f2937;
+          --gray: #9ca3af;
+        }
+      `}</style>
 
             {/* Elementos decorativos */}
             <div className="absolute top-20 left-10 w-20 h-20 bg-[var(--rose)]/20 rounded-full animate-pulse"></div>
             <div className="absolute bottom-20 right-10 w-32 h-32 bg-[var(--violet)]/20 rounded-full animate-pulse delay-1000"></div>
 
             <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden grid lg:grid-cols-2 z-10 relative">
-                {/* Modal automático si emailNotVerified es true */}
-                {(showEmailVerificationError || emailNotVerified) && (
+
+                {emailNotVerified && (
                     <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-auto shadow-xl">
                             <div className="text-center space-y-4">
@@ -308,44 +288,41 @@ export default function LoginPage() {
                                     <p className="text-gray-600 text-sm">
                                         Necesitas verificar tu email antes de poder iniciar sesión.
                                     </p>
-                                    <p className="text-gray-600 text-sm mt-2">
-                                        Email:{" "}
-                                        <span className="font-semibold">
-                                            {formData.email || unverifiedUser?.email}
-                                        </span>
-                                    </p>
                                 </div>
                                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                     <p className="text-xs text-yellow-700">
-                                        1. Revisá tu bandeja de entrada (y spam)
-                                        <br />
-                                        2. Hacé clic en el enlace de verificación
-                                        <br />
+                                        1. Revisá tu bandeja de entrada (y spam)<br />
+                                        2. Hacé clic en el enlace de verificación<br />
                                         3. Volvé acá e iniciá sesión nuevamente
                                     </p>
                                 </div>
                                 <div className="space-y-2">
-                                    {unverifiedUser && (
-                                        <Button
-                                            onClick={resendVerificationEmail}
-                                            variant="primary"
-                                            fullWidth
-                                            size="sm"
-                                            rounded="full"
-                                            className="flex items-center justify-center"
-                                        >
-                                            <RefreshCw size={14} className="mr-2" />
-                                            Reenviar email de verificación
-                                        </Button>
-                                    )}
                                     <Button
-                                        onClick={closeVerificationError}
+                                        onClick={resendVerificationEmail}
+                                        variant="primary"
+                                        fullWidth
+                                        size="sm"
+                                        rounded="full"
+                                        className="flex items-center justify-center"
+                                    >
+                                        <RefreshCw size={14} className="mr-2" />
+                                        Reenviar email
+                                    </Button>
+
+                                    {/* CORREGIDO: Botón para cerrar modal y limpiar estado */}
+                                    <Button
+                                        onClick={async () => {
+                                            // Limpiar estado de Firebase
+                                            await signOut(auth);
+                                            // Recargar página para resetear estado
+                                            window.location.reload();
+                                        }}
                                         variant="outline"
                                         fullWidth
                                         size="sm"
                                         rounded="full"
                                     >
-                                        Cerrar
+                                        Cerrar y limpiar
                                     </Button>
                                 </div>
                             </div>
@@ -357,12 +334,9 @@ export default function LoginPage() {
                 <div className="hidden lg:block">
                     <div className="bg-gradient-to-br from-[var(--violet)] to-[var(--rose)] p-6 text-white h-full flex flex-col justify-center">
                         <div className="mb-6">
-                            <h1 className="text-3xl font-bold mb-3">
-                                ¡Bienvenido de vuelta!
-                            </h1>
+                            <h1 className="text-3xl font-bold mb-3">¡Bienvenido de vuelta!</h1>
                             <p className="text-lg opacity-90">
-                                Seguí acumulando puntos y disfrutando de los mejores
-                                beneficios gastronómicos.
+                                Seguí acumulando puntos y disfrutando de los mejores beneficios gastronómicos.
                             </p>
                         </div>
                         <div className="space-y-4 mb-6">
@@ -372,9 +346,7 @@ export default function LoginPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-semibold">Acumulá puntos</h3>
-                                    <p className="text-sm opacity-80">
-                                        En cada compra que realices
-                                    </p>
+                                    <p className="text-sm opacity-80">En cada compra que realices</p>
                                 </div>
                             </div>
                             <div className="flex items-center space-x-3">
@@ -383,9 +355,7 @@ export default function LoginPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-semibold">Canjeá beneficios</h3>
-                                    <p className="text-sm opacity-80">
-                                        Obtené descuentos y productos gratis
-                                    </p>
+                                    <p className="text-sm opacity-80">Obtené descuentos y productos gratis</p>
                                 </div>
                             </div>
                         </div>
@@ -497,9 +467,7 @@ export default function LoginPage() {
                                     <div className="w-full border-t border-gray-300"></div>
                                 </div>
                                 <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-white text-gray-500">
-                                        O continuá con
-                                    </span>
+                                    <span className="px-2 bg-white text-gray-500">O continuá con</span>
                                 </div>
                             </div>
                         </div>
@@ -534,14 +502,14 @@ export default function LoginPage() {
                                 ¿No tenés cuenta?
                                 <button
                                     className="ml-2 text-[var(--violet)] hover:text-[var(--violet-200)] font-semibold transition-colors"
-                                    onClick={goToRegisterPage}
+                                    onClick={() => router.push("/register")}
                                 >
                                     Registrate acá
                                 </button>
                             </p>
                             <button
                                 className="inline-flex items-center text-gray-500 hover:text-[var(--violet)] transition-colors text-sm"
-                                onClick={goToLandingPage}
+                                onClick={() => router.push("/")}
                             >
                                 <ArrowLeft size={16} className="mr-1" />
                                 Volver al inicio

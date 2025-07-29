@@ -1,489 +1,463 @@
 "use client";
+import { createContext, useContext, useEffect, ReactNode } from "react";
+import { auth, googleProvider } from "@/auth/firebase";
 import {
-    createContext,
-    useContext,
-    useEffect,
-    ReactNode,
-} from "react";
-import { auth } from "@/auth/firebase";
-import { onAuthStateChanged, signOut, User, signInWithEmailAndPassword } from "firebase/auth";
-import { getUserProfile } from "@/api/usuariosFetch"
+    onAuthStateChanged,
+    signOut,
+    User,
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    sendEmailVerification
+} from "firebase/auth";
+import { getUserProfile, validateUser } from "@/api/usuariosFetch";
 import toast from "react-hot-toast";
 import { logger } from "@/utils/logger";
-import { useAuthStore } from "@/stores/userProfile";
-import { authCookies } from "@/utils/cookies";
-
-interface UserProfile {
-    usuario: {
-        usu_id: string;
-        usu_activo: number;
-        usu_username: string;
-        usu_mail: string;
-        usu_cel: string;
-        usu_fecha_alta: string;
-        usu_fecha_baja: string;
-        usu_fecha_ultimo_login: string;
-        usu_login_count: number;
-        usu_dni: string;
-        usu_loc_id: number;
-        tip_id: number;
-    };
-    mensaje: string;
-}
+import { useAuthStore } from "@/stores/useAuthStore";
+import { authCookies } from "@/utils/authCookies";
+import { useRouter } from "next/navigation";
 
 interface AuthContextType {
-    isAuthenticated: boolean;
-    token: string | null;
-    user: User | null;
-    userRole: 'cliente' | 'encargado' | null;
-    userProfile: UserProfile | null;
+    // Estados derivados del store
     isLoading: boolean;
+    isAuthenticated: boolean;
     needsOnboarding: boolean;
     emailNotVerified: boolean;
-    login: (email: string, password: string) => Promise<boolean>;
-    loginWithGoogle: (googleUser: User) => Promise<boolean>;
-    logout: () => Promise<void>;
-    refreshToken: () => Promise<string | null>;
-    completeOnboarding: () => Promise<void>;
+    user: User | null;
+    token: string | null;
+    userRole: 'cliente' | 'encargado' | null;
+    userProfile: any;
     hasLoadedFromStorage: boolean;
+
+    // Métodos
+    login: (email: string, password: string) => Promise<boolean>;
+    loginWithGoogle: () => Promise<boolean>;
+    logout: () => Promise<void>;
+    completeOnboarding: () => Promise<void>;
+    resendVerificationEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const {
-        isAuthenticated,
-        user,
-        userRole,
-        userProfile,
-        isLoading,
-        needsOnboarding,
-        emailNotVerified,
-        hasLoadedFromStorage,
-        isExplicitLogin,
-        isGoogleLogin,
-        setUser,
-        setUserRole,
-        setUserProfile,
-        setIsLoading,
-        setNeedsOnboarding,
-        setEmailNotVerified,
-        setIsAuthenticated,
-        setHasLoadedFromStorage,
-        setIsExplicitLogin,
-        setIsGoogleLogin,
-        loginSuccess,
-        loginForOnboarding,
-        emailNotVerifiedState,
-        logout: storeLogout,
-        getIsFullyAuthenticated
-    } = useAuthStore();
+    const store = useAuthStore();
+    const router = useRouter();
 
     const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-    const validateUserRole = async (
-        firebaseToken: string
-    ): Promise<"cliente" | "encargado" | "needs_onboarding" | null> => {
+    // ============================================================================
+    // FUNCIONES DE VALIDACIÓN
+    // ============================================================================
+
+    /**
+     * Validar si el usuario existe en nuestra base de datos usando /usuarios/ver_perfil
+     */
+    const validateUserInDB = async (token: string) => {
         try {
-            // Intentar validar como cliente primero
-            const clienteResponse = await fetch(
-                `${URI_API}/usuarios/validate_cliente`,
-                {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${firebaseToken}`,
-                    },
+            logger.log("🔍 Validando usuario en BD con /usuarios/validate...");
+
+            const response = await validateUser(token);
+
+            logger.log("📥 Respuesta de validateUser:", {
+                status: response.status,
+                ok: response.ok,
+                data: response.data
+            });
+
+            if (response.ok) {
+                const data = response.data;
+
+                // 🔍 Verificar si el usuario existe
+                if (data === true || (typeof data === 'object' && data.exists === true)) {
+                    logger.log("✅ Usuario existe en BD - AHORA VALIDAR ROLES");
+
+                    // 🎯 VALIDAR ROLES con los endpoints correctos
+                    const roleValidation = await validateUserRole(token);
+
+                    if (roleValidation) {
+                        logger.log(`✅ Rol validado correctamente: ${roleValidation}`);
+
+                        // Obtener perfil completo
+                        const profileResponse = await getUserProfile(token);
+                        const profile = profileResponse.ok ? profileResponse.data : null;
+
+                        return { exists: true, role: roleValidation, profile };
+                    } else {
+                        logger.log("❌ Error validando rol del usuario");
+                        return { exists: false, role: null, profile: null };
+                    }
+
+                } else {
+                    logger.log("❌ Usuario no existe en BD - NECESITA ONBOARDING");
+                    return { exists: false, role: null, profile: null };
                 }
-            );
+
+            } else {
+                logger.log("❌ Error en API validate - NECESITA ONBOARDING");
+                return { exists: false, role: null, profile: null };
+            }
+        } catch (error) {
+            logger.error("❌ Error validando usuario:", error);
+            return { exists: false, role: null, profile: null };
+        }
+    };
+
+    /**
+     * Validar rol específico del usuario usando los endpoints correctos
+     */
+    const validateUserRole = async (token: string): Promise<"cliente" | "encargado" | null> => {
+        try {
+            logger.log("🔍 Validando rol del usuario...");
+
+            // 1. Intentar validar como CLIENTE primero
+            logger.log("👤 Probando como CLIENTE...");
+            const clienteResponse = await fetch(`${URI_API}/usuarios/validate_cliente`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
             if (clienteResponse.ok) {
-                const data = await clienteResponse.json();
-                if (data === true) {
-                    return "cliente";
-                }
+                const clienteData = await clienteResponse.json();
+                logger.log("✅ CLIENTE validado exitosamente:", clienteData);
+                return "cliente";
             }
 
-            // Si falla como cliente, intentar como encargado
-            const encargadoResponse = await fetch(
-                `${URI_API}/usuarios/validate_encargado`,
-                {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${firebaseToken}`,
-                    },
-                }
-            );
+            logger.log("❌ No es cliente, probando como ENCARGADO...");
+
+            // 2. Si no es cliente, intentar validar como ENCARGADO
+            const encargadoResponse = await fetch(`${URI_API}/usuarios/validate_encargado`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
             if (encargadoResponse.ok) {
-                const data = await encargadoResponse.json();
-                if (data === true) {
-                    return "encargado";
-                }
+                const encargadoData = await encargadoResponse.json();
+                logger.log("✅ ENCARGADO validado exitosamente:", encargadoData);
+                return "encargado";
             }
 
-            // Si ambas APIs devuelven 200 pero con false, necesita onboarding
-            if (clienteResponse.status === 200 && encargadoResponse.status === 200) {
-                logger.log("🔄 Usuario existe en Firebase pero no en BD - needs_onboarding");
-                return "needs_onboarding";
-            }
-
-            // Si hay otros códigos de error (403, 401, etc.), no tiene acceso válido
-            logger.log("❌ No tiene acceso válido - retornando null");
+            logger.log("❌ Usuario no es ni cliente ni encargado");
             return null;
+
         } catch (error) {
-            logger.error("❌ Error validando rol del usuario:", error);
+            logger.error("❌ Error validando rol:", error);
             return null;
         }
     };
 
-    const validateUserSession = async (firebaseUser: User): Promise<boolean> => {
+    /**
+     * Procesar usuario de Firebase después del login
+     */
+    const processFirebaseUser = async (firebaseUser: User) => {
         try {
-            // PASO 0: VERIFICAR EMAIL ANTES QUE NADA
+            logger.log("🔄 Procesando usuario de Firebase:", firebaseUser.email);
+
+            // 1. Verificar email
             if (!firebaseUser.emailVerified) {
-                logger.log("❌ Email no verificado para usuario:", firebaseUser.email);
-                emailNotVerifiedState(firebaseUser);
-                return false;
+                logger.log("❌ Email no verificado");
+                store.setState({
+                    type: 'EMAIL_NOT_VERIFIED',
+                    firebaseUser
+                });
+                return;
             }
 
-            // Paso 1: Obtener token de Firebase
-            const firebaseToken = await firebaseUser.getIdToken();
+            // 2. Obtener token
+            const token = await firebaseUser.getIdToken();
+            logger.log("🔑 Token obtenido de Firebase");
 
-            // Paso 2: Validar rol del usuario
-            const roleOrStatus = await validateUserRole(firebaseToken);
+            // 3. Validar en BD
+            logger.log("🔍 Consultando usuario en base de datos...");
+            const validation = await validateUserInDB(token);
 
-            // Si necesita onboarding, configurar estado especial
-            if (roleOrStatus === "needs_onboarding") {
-                logger.log("🆕 Usuario nuevo detectado - configurando para onboarding");
-
-                // Guardar token en cookie para onboarding
-                authCookies.setToken(firebaseToken);
-
-                loginForOnboarding(firebaseUser);
-                return true;
-            }
-
-            // Si no tiene rol válido, fallar
-            if (!roleOrStatus || roleOrStatus === null) {
-                logger.log("❌ Usuario sin rol válido");
-                return false;
-            }
-
-            // Obtener perfil del usuario
-            const profileResponse = await getUserProfile(firebaseToken);
-            if (!profileResponse.ok) {
-                logger.error("❌ Error obteniendo perfil:", profileResponse.data);
-                return false;
-            }
-
-            // Guardar en cookies
-            authCookies.saveAuthData({
-                token: firebaseToken,
-                role: roleOrStatus,
-                profile: profileResponse.data
+            // 🔍 DEBUG EXTENDIDO
+            logger.log("🎯 Resultado de validación:", {
+                exists: validation.exists,
+                role: validation.role,
+                hasProfile: !!validation.profile
             });
 
-            // Actualizar store
-            loginSuccess(firebaseUser, roleOrStatus, profileResponse.data);
+            if (validation.exists && validation.role && validation.profile) {
+                // ✅ Usuario COMPLETO - existe en BD con perfil
+                logger.log("✅ Usuario completamente autenticado");
+                logger.log(`👤 Rol FINAL: ${validation.role}`);
 
-            logger.log(`✅ Usuario completamente autenticado como: ${roleOrStatus}`);
-            return true;
-        } catch (error) {
-            logger.error("❌ Error en validación de sesión:", error);
-            return false;
-        }
-    };
+                // Guardar en storage
+                authCookies.setAuthData({
+                    token,
+                    role: validation.role as 'cliente' | 'encargado',
+                    profile: validation.profile,
+                    userEmail: firebaseUser.email || ''
+                });
 
-    const completeOnboarding = async () => {
-        logger.log("🎉 Completando onboarding...");
+                // 🔍 VERIFICAR QUE SE GUARDÓ CORRECTAMENTE
+                const savedData = authCookies.getAuthData();
+                logger.log("🔍 Datos guardados en cookies:", {
+                    role: savedData.role,
+                    userEmail: savedData.userEmail,
+                    hasProfile: !!savedData.profile
+                });
 
-        if (user) {
-            const isValid = await validateUserSession(user);
-            if (!isValid) {
-                logger.log("❌ Error revalidando después de onboarding");
-                await signOut(auth);
+                store.setState({
+                    type: 'AUTHENTICATED',
+                    firebaseUser,
+                    token,
+                    role: validation.role as 'cliente' | 'encargado',
+                    profile: validation.profile
+                });
+
+                // 🔍 VERIFICAR ESTADO DEL STORE
+                logger.log("🔍 Estado final del store:", {
+                    isAuthenticated: store.isAuthenticated(),
+                    role: store.getRole(),
+                    needsOnboarding: store.needsOnboarding()
+                });
+
+            } else {
+                // ❌ Usuario NO existe en BD - NECESITA ONBOARDING
+                logger.log("🔄 Usuario necesita onboarding obligatorio");
+                logger.log("📝 Guardando token para proceso de onboarding");
+
+                // Guardar solo token para onboarding
+                authCookies.setAuthData({
+                    token,
+                    userEmail: firebaseUser.email || ''
+                });
+
+                store.setState({
+                    type: 'NEEDS_ONBOARDING',
+                    firebaseUser,
+                    token
+                });
             }
+        } catch (error) {
+            logger.error("❌ Error procesando usuario:", error);
+            store.setState({ type: 'UNAUTHENTICATED' });
         }
-
-        setNeedsOnboarding(false);
     };
 
-    const loginWithGoogle = async (googleUser: User): Promise<boolean> => {
+    // ============================================================================
+    // MÉTODOS PÚBLICOS
+    // ============================================================================
+
+    const login = async (email: string, password: string): Promise<boolean> => {
         try {
-            logger.log("🔐 Iniciando login con Google para:", googleUser.email);
-            setIsGoogleLogin(true);
+            logger.log("🔐 Iniciando login con email/password");
 
-            // VERIFICACIÓN DE EMAIL PARA GOOGLE TAMBIÉN
-            if (!googleUser.emailVerified) {
-                logger.log("❌ Email de Google no verificado (raro, pero posible)");
-                emailNotVerifiedState(googleUser);
-                setIsGoogleLogin(false);
-                return false;
-            }
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            await processFirebaseUser(userCredential.user);
 
-            // Obtener token de Firebase del usuario de Google
-            const firebaseToken = await googleUser.getIdToken();
-
-            // Validar rol del usuario en nuestro sistema
-            const roleOrStatus = await validateUserRole(firebaseToken);
-
-            // Si necesita onboarding, configurar estado especial
-            if (roleOrStatus === "needs_onboarding" || roleOrStatus === null) {
-                logger.log("🔄 Usuario de Google con email verificado necesita onboarding");
-
-                // Guardar en cookies con flag de Google
-                authCookies.setToken(firebaseToken);
-                authCookies.setGoogleUser(googleUser.email || "");
-
-                loginForOnboarding(googleUser);
-                setIsGoogleLogin(false);
-
-                logger.log("✅ Google login configurado para onboarding");
-                return true;
-            }
-
-            // Usuario existente con rol válido
-            const profileResponse = await getUserProfile(firebaseToken);
-            if (!profileResponse.ok) {
-                logger.error("❌ Error obteniendo perfil para usuario de Google:", profileResponse.data);
-                setIsGoogleLogin(false);
-                return false;
-            }
-
-            // Guardar en cookies con flag de Google
-            authCookies.saveAuthData({
-                token: firebaseToken,
-                role: roleOrStatus,
-                profile: profileResponse.data,
-                isGoogleUser: true,
-                googleEmail: googleUser.email || ""
-            });
-
-            // Actualizar store
-            loginSuccess(googleUser, roleOrStatus, profileResponse.data);
-            setIsGoogleLogin(false);
-
-            logger.log(`✅ Usuario de Google autenticado como: ${roleOrStatus}`);
             return true;
-
-        } catch (error) {
-            logger.error("❌ Error en login con Google:", error);
-            setIsGoogleLogin(false);
+        } catch (error: any) {
+            logger.error("❌ Error en login:", error);
             throw error;
         }
     };
 
-    // Cargar datos desde cookies al inicializar
-    useEffect(() => {
-        const loadFromCookies = () => {
-            const authData = authCookies.loadAuthData();
-
-            if (authData.token) {
-                try {
-                    if (authData.role && authData.profile) {
-                        // Datos completos - usuario autenticado
-                        setUserRole(authData.role);
-                        setUserProfile(authData.profile);
-                        setNeedsOnboarding(false);
-                        setEmailNotVerified(false);
-                        setIsAuthenticated(true);
-
-                        logger.log("✅ Datos de auth cargados desde cookies");
-                    } else {
-                        // Solo token - usuario en onboarding
-                        setNeedsOnboarding(true);
-                        setUserRole(null);
-                        setUserProfile(null);
-                        setIsAuthenticated(false);
-
-                        logger.log("🔄 Token encontrado, usuario en onboarding");
-                    }
-
-                    setHasLoadedFromStorage(true);
-                } catch (error) {
-                    logger.error("❌ Error cargando datos desde cookies:", error);
-                    authCookies.clearAll();
-                    setHasLoadedFromStorage(true);
-                }
-            } else {
-                logger.log("📦 No hay datos en cookies");
-                setHasLoadedFromStorage(true);
-            }
-        };
-
-        loadFromCookies();
-    }, []);
-
-    // onAuthStateChanged CONTROLADO Y INTELIGENTE
-    useEffect(() => {
-        // No iniciar hasta que hayamos cargado desde cookies
-        if (!hasLoadedFromStorage) {
-            logger.log("⏳ Esperando carga desde cookies...");
-            return;
-        }
-
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            logger.log("🔍 onAuthStateChanged triggered");
-            logger.log("🎯 isGoogleLogin:", isGoogleLogin);
-            logger.log("🎯 user:", firebaseUser?.email);
-            logger.log("🎯 emailVerified:", firebaseUser?.emailVerified);
-
-            // Si es un login de Google activo, COMPLETAMENTE SALTEADO
-            if (isGoogleLogin) {
-                logger.log("⏭️ SALTEANDO onAuthStateChanged - es Google login activo");
-                return;
-            }
-
-            if (firebaseUser) {
-                logger.log("🔍 Usuario detectado en Firebase:", firebaseUser.email);
-
-                // Verificar si este usuario coincide con el Google user guardado
-                const isGoogleUser = authCookies.isGoogleUser();
-                const googleUserEmail = authCookies.getGoogleEmail();
-                const hasCompleteSession = getIsFullyAuthenticated();
-
-                // Si es Google user y ya tenemos sesión completa, verificar email match
-                if (hasCompleteSession && isGoogleUser && googleUserEmail === firebaseUser.email) {
-                    logger.log("✅ Usuario de Google con sesión completa y email coincidente, omitiendo revalidación");
-                    setUser(firebaseUser);
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Si tenemos token pero estamos en onboarding y es mismo Google user
-                if (authCookies.getToken() && needsOnboarding && isGoogleUser && googleUserEmail === firebaseUser.email) {
-                    logger.log("🔄 Usuario de Google en onboarding con email coincidente, omitiendo revalidación");
-                    setUser(firebaseUser);
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Solo revalidar si no tenemos datos o si no es usuario de Google o si el email no coincide
-                if (!hasCompleteSession && (!isGoogleUser || googleUserEmail !== firebaseUser.email)) {
-                    logger.log("✅ Procediendo con validación de sesión completa");
-                    const isValid = await validateUserSession(firebaseUser);
-                    if (!isValid) {
-                        logger.log("❌ Validación fallida, cerrando sesión");
-                        await signOut(auth);
-                    }
-                } else {
-                    // Ya tenemos datos válidos, solo actualizar user
-                    setUser(firebaseUser);
-                }
-            } else {
-                // Usuario no autenticado, limpiar todo SOLO si no tenemos flag de Google
-                const isGoogleUser = authCookies.isGoogleUser();
-
-                if (!isGoogleUser) {
-                    logger.log("🚪 Usuario desautenticado");
-                    authCookies.clearAll();
-                    storeLogout();
-                } else {
-                    logger.log("🔒 Usuario de Google sin Firebase user, manteniendo datos de cookies");
-                }
-            }
-
-            setIsLoading(false);
-            setIsExplicitLogin(false);
-        });
-
-        return () => unsubscribe();
-    }, [hasLoadedFromStorage, isGoogleLogin, getIsFullyAuthenticated, needsOnboarding]);
-
-    // Función de login que maneja todo el flujo
-    const login = async (email: string, password: string): Promise<boolean> => {
+    const loginWithGoogle = async (): Promise<boolean> => {
         try {
-            logger.log("🔐 Iniciando login explícito para:", email);
-            setIsExplicitLogin(true);
+            logger.log("🔐 Iniciando login con Google");
 
-            await signInWithEmailAndPassword(auth, email, password);
+            googleProvider.addScope('email');
+            googleProvider.addScope('profile');
+
+            const result = await signInWithPopup(auth, googleProvider);
+
+            // Marcar como Google user
+            authCookies.setAuthData({
+                token: '', // Se actualizará en processFirebaseUser
+                isGoogleUser: true,
+                userEmail: result.user.email || ''
+            });
+
+            await processFirebaseUser(result.user);
+
             return true;
-        } catch (error) {
-            logger.error("❌ Error en login:", error);
-            setIsExplicitLogin(false);
+        } catch (error: any) {
+            logger.error("❌ Error en login con Google:", error);
             throw error;
         }
     };
 
     const logout = async () => {
-        const toastId = toast.loading("Cerrando sesión...");
-
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            logger.log("🚪 Cerrando sesión");
 
             await signOut(auth);
-            authCookies.clearAll();
-            storeLogout();
+            authCookies.clearAuth();
+            store.reset();
 
-            toast.success("Sesión cerrada correctamente", { id: toastId });
+            // 🎯 Usar router.push en lugar de window.location.href para evitar refresh
+            router.push("/login");
 
-            window.location.href = "/login";
         } catch (error) {
             logger.error("❌ Error en logout:", error);
+            // Forzar limpieza local aunque falle el signOut
+            authCookies.clearAuth();
+            store.reset();
 
-            authCookies.clearAll();
-            storeLogout();
-
-            toast.error("Error al cerrar sesión", { id: toastId });
+            // Solo usar window.location.href como último recurso
+            router.push("/login");
         }
     };
 
-    const refreshToken = async (): Promise<string | null> => {
-        if (user) {
-            try {
-                const newToken = await user.getIdToken(true);
-                const roleOrStatus = await validateUserRole(newToken);
+    const completeOnboarding = async () => {
+        try {
+            logger.log("🎉 Completando onboarding");
 
-                if (!roleOrStatus || roleOrStatus === "needs_onboarding") {
-                    await logout();
-                    return null;
-                }
-
-                // Actualizar cookie y store
-                authCookies.setToken(newToken);
-                authCookies.setRole(roleOrStatus);
-
-                return newToken;
-            } catch (error) {
-                logger.error("❌ Error refrescando token:", error);
-                return null;
+            const user = store.getUser();
+            if (user) {
+                await processFirebaseUser(user);
             }
+        } catch (error) {
+            logger.error("❌ Error completando onboarding:", error);
         }
-        return null;
     };
 
-    // Obtener token actual
-    const getToken = (): string | null => {
-        return authCookies.getToken();
+    const resendVerificationEmail = async () => {
+        try {
+            const user = store.getUser();
+            if (user) {
+                await sendEmailVerification(user, {
+                    url: `${window.location.origin}/login`,
+                    handleCodeInApp: false
+                });
+                toast.success("Email de verificación reenviado");
+            }
+        } catch (error) {
+            logger.error("❌ Error reenviando email:", error);
+            toast.error("Error al reenviar email");
+        }
+    };
+
+    // ============================================================================
+    // EFFECTS
+    // ============================================================================
+
+    // Cargar datos iniciales desde storage
+    useEffect(() => {
+        const loadInitialData = () => {
+            try {
+                logger.log("📦 Cargando datos iniciales...");
+
+                const savedData = authCookies.getAuthData();
+
+                if (savedData.token) {
+                    if (savedData.role && savedData.profile) {
+                        // Datos completos - usuario autenticado
+                        logger.log("✅ Datos completos encontrados en storage");
+                        // No seteamos el estado aún, esperamos a onAuthStateChanged
+                    } else {
+                        // Solo token - usuario en onboarding
+                        logger.log("🔄 Token encontrado - usuario en onboarding");
+                        // No seteamos el estado aún, esperamos a onAuthStateChanged
+                    }
+                } else {
+                    logger.log("❌ No hay datos en storage");
+                    store.setState({ type: 'UNAUTHENTICATED' });
+                }
+            } catch (error) {
+                logger.error("❌ Error cargando datos iniciales:", error);
+                authCookies.clearAuth();
+                store.setState({ type: 'UNAUTHENTICATED' });
+            } finally {
+                store.setHasLoadedFromStorage(true);
+            }
+        };
+
+        loadInitialData();
+    }, []);
+
+
+    useEffect(() => {
+        if (!store.hasLoadedFromStorage) {
+            return;
+        }
+
+        logger.log("🔄 Iniciando listener de Firebase Auth");
+
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            logger.log("🔍 onAuthStateChanged:", firebaseUser?.email || 'null');
+
+            if (firebaseUser) {
+                // Verificar si ya tenemos datos válidos para este usuario
+                const savedData = authCookies.getAuthData();
+                const isLoadingFromExistingData =
+                    savedData.userEmail === firebaseUser.email &&
+                    (store.isAuthenticated() || store.needsOnboarding());
+
+                if (!isLoadingFromExistingData) {
+                    // Procesar usuario si no tenemos datos válidos
+                    await processFirebaseUser(firebaseUser);
+                } else {
+                    // Restaurar estado desde storage
+                    if (savedData.role && savedData.profile && savedData.token) {
+                        store.setState({
+                            type: 'AUTHENTICATED',
+                            firebaseUser,
+                            token: savedData.token,
+                            role: savedData.role,
+                            profile: savedData.profile
+                        });
+                    } else if (savedData.token) {
+                        store.setState({
+                            type: 'NEEDS_ONBOARDING',
+                            firebaseUser,
+                            token: savedData.token
+                        });
+                    }
+                }
+            } else {
+                // Usuario no autenticado
+                logger.log("❌ Usuario no autenticado en Firebase");
+                authCookies.clearAuth();
+                store.setState({ type: 'UNAUTHENTICATED' });
+            }
+        });
+
+        return () => unsubscribe();
+    }, [store.hasLoadedFromStorage]);
+
+    // ============================================================================
+    // CONTEXT VALUE
+    // ============================================================================
+
+    const contextValue: AuthContextType = {
+        // Estados
+        isLoading: store.isLoading(),
+        isAuthenticated: store.isAuthenticated(),
+        needsOnboarding: store.needsOnboarding(),
+        emailNotVerified: store.emailNotVerified(),
+        user: store.getUser(),
+        token: store.getToken(),
+        userRole: store.getRole(),
+        userProfile: store.getProfile(),
+        hasLoadedFromStorage: store.hasLoadedFromStorage,
+
+        // Métodos
+        login,
+        loginWithGoogle,
+        logout,
+        completeOnboarding,
+        resendVerificationEmail
     };
 
     return (
-        <AuthContext.Provider
-            value={{
-                isAuthenticated: getIsFullyAuthenticated(),
-                token: getToken(),
-                user,
-                userRole,
-                userProfile,
-                isLoading,
-                needsOnboarding,
-                emailNotVerified,
-                login,
-                loginWithGoogle,
-                logout,
-                refreshToken,
-                completeOnboarding,
-                hasLoadedFromStorage
-            }}
-        >
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-export const useAuthContext = () => {
+export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (!context) throw new Error("useAuthContext must be used within AuthContext");
+    if (!context) {
+        throw new Error("useAuth must be used within AuthProvider");
+    }
     return context;
 };

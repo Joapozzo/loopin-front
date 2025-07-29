@@ -1,7 +1,7 @@
 import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: "primary" | "secondary" | "outline" | "danger" | "success" | "light" | "promocion" | "puntos" | "warning";
+    variant?: "primary" | "secondary" | "outline" | "danger" | "success" | "light" | "promocion" | "puntos" | "warning" | "link";
     fullWidth?: boolean;
     rounded?: "sm" | "md" | "lg" | "xl" | "2xl" | "full";
     size?: "sm" | "md" | "lg";
@@ -27,6 +27,7 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
         "bg-green-600 text-white border border-transparent hover:bg-transparent hover:text-white hover:border-green-600 transition-colors duration-300",
     warning:
         "bg-yellow-500 text-white border border-yellow-500 hover:bg-transparent hover:text-yellow-500",
+    link: "bg-transparent text-[var(--violet)] border border-transparent hover:bg-transparent hover:text-[var(--violet-100)]",
 };
 
 const sizeClasses: Record<"sm" | "md" | "lg", string> = {

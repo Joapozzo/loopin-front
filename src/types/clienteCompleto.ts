@@ -25,3 +25,21 @@ export interface ClienteApiResponse {
     clientes: ClienteCompleto[];
     mensaje: string;
 }
+
+export interface UserProfile {
+    usuario: {
+        usu_id: string;
+        usu_activo: number;
+        usu_username: string;
+        usu_mail: string;
+        usu_cel: string;
+        usu_fecha_alta: string;
+        usu_fecha_baja: string;
+        usu_fecha_ultimo_login: string;
+        usu_login_count: number;
+        usu_dni: string;
+        usu_loc_id: number;
+        tip_id: number;
+    };
+    mensaje: string;
+}

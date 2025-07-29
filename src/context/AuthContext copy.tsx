@@ -3,7 +3,6 @@ import {
     createContext,
     useContext,
     useEffect,
-    useState,
     ReactNode,
 } from "react";
 import { auth } from "@/auth/firebase";
@@ -11,6 +10,8 @@ import { onAuthStateChanged, signOut, User, signInWithEmailAndPassword } from "f
 import { getUserProfile } from "@/api/usuariosFetch"
 import toast from "react-hot-toast";
 import { logger } from "@/utils/logger";
+import { useAuthStore } from "@/stores/userProfile";
+import { authCookies } from "@/utils/cookies";
 
 interface UserProfile {
     usuario: {
@@ -44,21 +45,39 @@ interface AuthContextType {
     logout: () => Promise<void>;
     refreshToken: () => Promise<string | null>;
     completeOnboarding: () => Promise<void>;
+    hasLoadedFromStorage: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [token, setToken] = useState<string | null>(null);
-    const [user, setUser] = useState<User | null>(null);
-    const [userRole, setUserRole] = useState<"cliente" | "encargado" | null>(null);
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isExplicitLogin, setIsExplicitLogin] = useState(false);
-    const [isGoogleLogin, setIsGoogleLogin] = useState(false);
-    const [needsOnboarding, setNeedsOnboarding] = useState(false);
-    const [emailNotVerified, setEmailNotVerified] = useState(false);
-    const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false); // 🆕 Flag para saber si ya cargamos desde localStorage
+    const {
+        isAuthenticated,
+        user,
+        userRole,
+        userProfile,
+        isLoading,
+        needsOnboarding,
+        emailNotVerified,
+        hasLoadedFromStorage,
+        isExplicitLogin,
+        isGoogleLogin,
+        setUser,
+        setUserRole,
+        setUserProfile,
+        setIsLoading,
+        setNeedsOnboarding,
+        setEmailNotVerified,
+        setIsAuthenticated,
+        setHasLoadedFromStorage,
+        setIsExplicitLogin,
+        setIsGoogleLogin,
+        loginSuccess,
+        loginForOnboarding,
+        emailNotVerifiedState,
+        logout: storeLogout,
+        getIsFullyAuthenticated
+    } = useAuthStore();
 
     const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -104,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
 
-            // 🔥 NUEVA LÓGICA: Si ambas APIs devuelven 200 pero con false, necesita onboarding
+            // Si ambas APIs devuelven 200 pero con false, necesita onboarding
             if (clienteResponse.status === 200 && encargadoResponse.status === 200) {
                 logger.log("🔄 Usuario existe en Firebase pero no en BD - needs_onboarding");
                 return "needs_onboarding";
@@ -121,20 +140,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const validateUserSession = async (firebaseUser: User): Promise<boolean> => {
         try {
-            // 🔥 PASO 0: VERIFICAR EMAIL ANTES QUE NADA
+            // PASO 0: VERIFICAR EMAIL ANTES QUE NADA
             if (!firebaseUser.emailVerified) {
                 logger.log("❌ Email no verificado para usuario:", firebaseUser.email);
-                setEmailNotVerified(true);
-                setNeedsOnboarding(false);
-                setToken(null);
-                setUser(firebaseUser);
-                setUserRole(null);
-                setUserProfile(null);
+                emailNotVerifiedState(firebaseUser);
                 return false;
             }
-
-            // Email verificado, limpiar el flag
-            setEmailNotVerified(false);
 
             // Paso 1: Obtener token de Firebase
             const firebaseToken = await firebaseUser.getIdToken();
@@ -142,16 +153,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Paso 2: Validar rol del usuario
             const roleOrStatus = await validateUserRole(firebaseToken);
 
-            // 🆕 Si necesita onboarding, configurar estado especial
+            // Si necesita onboarding, configurar estado especial
             if (roleOrStatus === "needs_onboarding") {
                 logger.log("🆕 Usuario nuevo detectado - configurando para onboarding");
-                setToken(firebaseToken);
-                setUser(firebaseUser);
-                setUserRole(null); // 🔥 NO asignar rol hasta completar onboarding
-                setNeedsOnboarding(true);
-                setUserProfile(null);
-                setEmailNotVerified(false);
-                return true; // ✅ Retornar true para usuarios que necesitan onboarding
+
+                // Guardar token en cookie para onboarding
+                authCookies.setToken(firebaseToken);
+
+                loginForOnboarding(firebaseUser);
+                return true;
             }
 
             // Si no tiene rol válido, fallar
@@ -160,22 +170,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 return false;
             }
 
-            // Resto del código existente...
+            // Obtener perfil del usuario
             const profileResponse = await getUserProfile(firebaseToken);
             if (!profileResponse.ok) {
                 logger.error("❌ Error obteniendo perfil:", profileResponse.data);
                 return false;
             }
 
-            localStorage.setItem("token", firebaseToken);
-            localStorage.setItem("role", roleOrStatus);
-            localStorage.setItem("userProfile", JSON.stringify(profileResponse.data));
+            // Guardar en cookies
+            authCookies.saveAuthData({
+                token: firebaseToken,
+                role: roleOrStatus,
+                profile: profileResponse.data
+            });
 
-            setToken(firebaseToken);
-            setUser(firebaseUser);
-            setUserRole(roleOrStatus);
-            setUserProfile(profileResponse.data);
-            setNeedsOnboarding(false);
+            // Actualizar store
+            loginSuccess(firebaseUser, roleOrStatus, profileResponse.data);
 
             logger.log(`✅ Usuario completamente autenticado como: ${roleOrStatus}`);
             return true;
@@ -204,24 +214,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             logger.log("🔐 Iniciando login con Google para:", googleUser.email);
             setIsGoogleLogin(true);
 
-            // 🔥 VERIFICACIÓN DE EMAIL PARA GOOGLE TAMBIÉN
+            // VERIFICACIÓN DE EMAIL PARA GOOGLE TAMBIÉN
             if (!googleUser.emailVerified) {
                 logger.log("❌ Email de Google no verificado (raro, pero posible)");
-                setEmailNotVerified(true);
-                setNeedsOnboarding(false);
-                setToken(null);
-                setUser(googleUser);
-                setUserRole(null);
-                setUserProfile(null);
-                setIsLoading(false);
+                emailNotVerifiedState(googleUser);
                 setIsGoogleLogin(false);
                 return false;
             }
 
-            // Email verificado, proceder normalmente
-            setEmailNotVerified(false);
-
-            // 🆕 NO cerrar sesión - mantener el usuario de Google activo
             // Obtener token de Firebase del usuario de Google
             const firebaseToken = await googleUser.getIdToken();
 
@@ -232,17 +232,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (roleOrStatus === "needs_onboarding" || roleOrStatus === null) {
                 logger.log("🔄 Usuario de Google con email verificado necesita onboarding");
 
-                // 🔥 GUARDAR EN LOCALSTORAGE CON FLAG PERSISTENTE
-                localStorage.setItem("token", firebaseToken);
-                localStorage.setItem("googleUser", "true");
-                localStorage.setItem("googleUserEmail", googleUser.email || ""); // 🆕 Email de referencia
+                // Guardar en cookies con flag de Google
+                authCookies.setToken(firebaseToken);
+                authCookies.setGoogleUser(googleUser.email || "");
 
-                setToken(firebaseToken);
-                setUser(googleUser);
-                setNeedsOnboarding(true);
-                setUserRole(null);
-                setUserProfile(null);
-                setIsLoading(false);
+                loginForOnboarding(googleUser);
                 setIsGoogleLogin(false);
 
                 logger.log("✅ Google login configurado para onboarding");
@@ -254,23 +248,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (!profileResponse.ok) {
                 logger.error("❌ Error obteniendo perfil para usuario de Google:", profileResponse.data);
                 setIsGoogleLogin(false);
-                setIsLoading(false);
                 return false;
             }
 
-            // 🔥 GUARDAR TODO EN LOCALSTORAGE CON FLAG PERSISTENTE
-            localStorage.setItem("token", firebaseToken);
-            localStorage.setItem("role", roleOrStatus);
-            localStorage.setItem("userProfile", JSON.stringify(profileResponse.data));
-            localStorage.setItem("googleUser", "true");
-            localStorage.setItem("googleUserEmail", googleUser.email || ""); // 🆕 Email de referencia
+            // Guardar en cookies con flag de Google
+            authCookies.saveAuthData({
+                token: firebaseToken,
+                role: roleOrStatus,
+                profile: profileResponse.data,
+                isGoogleUser: true,
+                googleEmail: googleUser.email || ""
+            });
 
-            setToken(firebaseToken);
-            setUser(googleUser);
-            setUserRole(roleOrStatus);
-            setUserProfile(profileResponse.data);
-            setNeedsOnboarding(false);
-            setIsLoading(false);
+            // Actualizar store
+            loginSuccess(googleUser, roleOrStatus, profileResponse.data);
             setIsGoogleLogin(false);
 
             logger.log(`✅ Usuario de Google autenticado como: ${roleOrStatus}`);
@@ -279,68 +270,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
             logger.error("❌ Error en login con Google:", error);
             setIsGoogleLogin(false);
-            setIsLoading(false);
             throw error;
         }
     };
 
+    // Cargar datos desde cookies al inicializar
     useEffect(() => {
-        const loadFromStorage = () => {
-            const storedToken = localStorage.getItem("token");
-            const storedRole = localStorage.getItem("role") as "cliente" | "encargado" | null;
-            const storedProfile = localStorage.getItem("userProfile");
-            // const isGoogleUser = localStorage.getItem("googleUser") === "true";
+        const loadFromCookies = () => {
+            const authData = authCookies.loadAuthData();
 
-            if (storedToken) {
+            if (authData.token) {
                 try {
-                    setToken(storedToken);
-
-                    if (storedRole && storedProfile) {
-                        setUserRole(storedRole);
-                        setUserProfile(JSON.parse(storedProfile));
+                    if (authData.role && authData.profile) {
+                        // Datos completos - usuario autenticado
+                        setUserRole(authData.role);
+                        setUserProfile(authData.profile);
                         setNeedsOnboarding(false);
                         setEmailNotVerified(false);
+                        setIsAuthenticated(true);
 
-                        window.dispatchEvent(new StorageEvent('storage', {
-                            key: 'userProfile',
-                            newValue: storedProfile,
-                            url: window.location.href
-                        }));
-
-                        const comercioData = localStorage.getItem('comercio_encargado_data');
-                        if (comercioData) {
-                            window.dispatchEvent(new StorageEvent('storage', {
-                                key: 'comercio_encargado_data',
-                                newValue: comercioData,
-                                url: window.location.href
-                            }));
-                        }
+                        logger.log("✅ Datos de auth cargados desde cookies");
                     } else {
+                        // Solo token - usuario en onboarding
                         setNeedsOnboarding(true);
                         setUserRole(null);
                         setUserProfile(null);
+                        setIsAuthenticated(false);
+
+                        logger.log("🔄 Token encontrado, usuario en onboarding");
                     }
 
                     setHasLoadedFromStorage(true);
                 } catch (error) {
-                    logger.error("❌ Error cargando datos desde localStorage:", error);
-                    localStorage.clear();
+                    logger.error("❌ Error cargando datos desde cookies:", error);
+                    authCookies.clearAll();
                     setHasLoadedFromStorage(true);
                 }
             } else {
-                logger.log("📦 No hay datos en localStorage");
+                logger.log("📦 No hay datos en cookies");
                 setHasLoadedFromStorage(true);
             }
         };
 
-        loadFromStorage();
+        loadFromCookies();
     }, []);
 
-    // 🔥 onAuthStateChanged CONTROLADO Y INTELIGENTE
+    // onAuthStateChanged CONTROLADO Y INTELIGENTE
     useEffect(() => {
-        // No iniciar hasta que hayamos cargado desde localStorage
+        // No iniciar hasta que hayamos cargado desde cookies
         if (!hasLoadedFromStorage) {
-            logger.log("⏳ Esperando carga desde localStorage...");
+            logger.log("⏳ Esperando carga desde cookies...");
             return;
         }
 
@@ -350,7 +329,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             logger.log("🎯 user:", firebaseUser?.email);
             logger.log("🎯 emailVerified:", firebaseUser?.emailVerified);
 
-            // 🔥 Si es un login de Google activo, COMPLETAMENTE SALTEADO
+            // Si es un login de Google activo, COMPLETAMENTE SALTEADO
             if (isGoogleLogin) {
                 logger.log("⏭️ SALTEANDO onAuthStateChanged - es Google login activo");
                 return;
@@ -359,21 +338,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (firebaseUser) {
                 logger.log("🔍 Usuario detectado en Firebase:", firebaseUser.email);
 
-                // 🆕 Verificar si este usuario coincide con el Google user guardado
-                const isGoogleUser = localStorage.getItem("googleUser") === "true";
-                const googleUserEmail = localStorage.getItem("googleUserEmail");
-                const hasCompleteSession = token && userRole && userProfile && !needsOnboarding && !emailNotVerified;
+                // Verificar si este usuario coincide con el Google user guardado
+                const isGoogleUser = authCookies.isGoogleUser();
+                const googleUserEmail = authCookies.getGoogleEmail();
+                const hasCompleteSession = getIsFullyAuthenticated();
 
-                // 🆕 Si es Google user y ya tenemos sesión completa, verificar email match
+                // Si es Google user y ya tenemos sesión completa, verificar email match
                 if (hasCompleteSession && isGoogleUser && googleUserEmail === firebaseUser.email) {
                     logger.log("✅ Usuario de Google con sesión completa y email coincidente, omitiendo revalidación");
-                    setUser(firebaseUser); // Solo actualizar el objeto user de Firebase
+                    setUser(firebaseUser);
                     setIsLoading(false);
                     return;
                 }
 
-                // 🆕 Si tenemos token pero estamos en onboarding y es mismo Google user
-                if (token && needsOnboarding && isGoogleUser && googleUserEmail === firebaseUser.email) {
+                // Si tenemos token pero estamos en onboarding y es mismo Google user
+                if (authCookies.getToken() && needsOnboarding && isGoogleUser && googleUserEmail === firebaseUser.email) {
                     logger.log("🔄 Usuario de Google en onboarding con email coincidente, omitiendo revalidación");
                     setUser(firebaseUser);
                     setIsLoading(false);
@@ -394,20 +373,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
             } else {
                 // Usuario no autenticado, limpiar todo SOLO si no tenemos flag de Google
-                const isGoogleUser = localStorage.getItem("googleUser") === "true";
+                const isGoogleUser = authCookies.isGoogleUser();
 
                 if (!isGoogleUser) {
                     logger.log("🚪 Usuario desautenticado");
-                    localStorage.clear();
-                    setToken(null);
-                    setUser(null);
-                    setUserRole(null);
-                    setUserProfile(null);
-                    setNeedsOnboarding(false);
-                    setEmailNotVerified(false);
+                    authCookies.clearAll();
+                    storeLogout();
                 } else {
-                    logger.log("🔒 Usuario de Google sin Firebase user, manteniendo datos de localStorage");
-                    // Mantener datos pero marcar como no loading
+                    logger.log("🔒 Usuario de Google sin Firebase user, manteniendo datos de cookies");
                 }
             }
 
@@ -416,7 +389,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
 
         return () => unsubscribe();
-    }, [hasLoadedFromStorage, isGoogleLogin, token, userRole, userProfile, needsOnboarding, emailNotVerified]); // 🆕 Dependencias mejoradas
+    }, [hasLoadedFromStorage, isGoogleLogin, getIsFullyAuthenticated, needsOnboarding]);
 
     // Función de login que maneja todo el flujo
     const login = async (email: string, password: string): Promise<boolean> => {
@@ -440,7 +413,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
             await signOut(auth);
-            localStorage.clear();
+            authCookies.clearAll();
+            storeLogout();
 
             toast.success("Sesión cerrada correctamente", { id: toastId });
 
@@ -448,13 +422,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
             logger.error("❌ Error en logout:", error);
 
-            localStorage.clear();
-            setToken(null);
-            setUser(null);
-            setUserRole(null);
-            setUserProfile(null);
-            setNeedsOnboarding(false);
-            setEmailNotVerified(false);
+            authCookies.clearAll();
+            storeLogout();
 
             toast.error("Error al cerrar sesión", { id: toastId });
         }
@@ -471,10 +440,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     return null;
                 }
 
-                localStorage.setItem("token", newToken);
-                localStorage.setItem("role", roleOrStatus);
-                setToken(newToken);
-                setUserRole(roleOrStatus);
+                // Actualizar cookie y store
+                authCookies.setToken(newToken);
+                authCookies.setRole(roleOrStatus);
 
                 return newToken;
             } catch (error) {
@@ -485,11 +453,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return null;
     };
 
+    // Obtener token actual
+    const getToken = (): string | null => {
+        return authCookies.getToken();
+    };
+
     return (
         <AuthContext.Provider
             value={{
-                isAuthenticated: !!token && !!user && !!userRole && !needsOnboarding && !emailNotVerified,
-                token,
+                isAuthenticated: getIsFullyAuthenticated(),
+                token: getToken(),
                 user,
                 userRole,
                 userProfile,
@@ -501,6 +474,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 logout,
                 refreshToken,
                 completeOnboarding,
+                hasLoadedFromStorage
             }}
         >
             {children}

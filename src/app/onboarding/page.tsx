@@ -10,11 +10,11 @@ import { useState, useEffect } from "react";
 import SpinnerButton from "@/components/SpinnerButton";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { createUser } from "@/api/usuariosFetch";
+import { createUser, getUserProfile } from "@/api/usuariosFetch";
 import toast from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import SpinnerLoader from "@/components/ui/SpinerLoader";
-import { auth } from "@/auth/firebase";
+import { logger } from "@/utils/logger";
 
 const onboardingSchema = z.object({
     nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -30,10 +30,22 @@ type OnboardingData = z.infer<typeof onboardingSchema>;
 
 export default function OnboardingPage() {
     const router = useRouter();
-    const { token, user, needsOnboarding, completeOnboarding, logout, isLoading: authLoading } = useAuth();
+    const {
+        isLoading: authLoading,
+        needsOnboarding,
+        user,
+        token,
+        hasLoadedFromStorage,
+        logout,
+        completeOnboarding
+    } = useAuth();
+
     const [isLoading, setIsLoading] = useState(false);
 
-    // 🔥 TODOS LOS HOOKS DEBEN IR AL PRINCIPIO - ANTES DE CUALQUIER RETURN
+    // ============================================================================
+    // HOOKS PARA UBICACIONES
+    // ============================================================================
+
     const {
         provinciaOptions,
         localidadOptions,
@@ -54,21 +66,70 @@ export default function OnboardingPage() {
         mode: "onChange"
     });
 
-    // 🔥 TODOS LOS useEffect DEBEN IR AQUÍ - ANTES DE CUALQUIER RETURN
-    // Redireccionar si no necesita onboarding
-    useEffect(() => {
-        if (!authLoading && !needsOnboarding) {
-            router.push("/home");
-        }
-    }, [authLoading, needsOnboarding, router]);
+    // ============================================================================
+    // EFFECTS
+    // ============================================================================
 
-    // Verificar email verificado
     useEffect(() => {
-        const currentUser = auth.currentUser;
-        if (currentUser && !currentUser.emailVerified) {
-            router.push("/login");
+        if (!hasLoadedFromStorage || authLoading) {
+            return;
         }
-    }, [router]);
+
+        if (!needsOnboarding) {
+            logger.log("❌ Usuario no necesita onboarding, redirigiendo");
+            router.push("/login");
+            return;
+        }
+
+        if (!user || !token) {
+            logger.log("❌ Sin usuario o token para onboarding, redirigiendo a login");
+            router.push("/login");
+            return;
+        }
+
+        // Verificar email verificado
+        if (!user.emailVerified) {
+            logger.log("❌ Email no verificado, redirigiendo a login");
+            router.push("/login");
+            return;
+        }
+
+        logger.log("✅ Usuario válido para onboarding:", user.email);
+    }, [hasLoadedFromStorage, authLoading, needsOnboarding, user, token, router]);
+
+    useEffect(() => {
+        if (!hasLoadedFromStorage || authLoading) {
+            return;
+        }
+
+        // Timeout de emergencia: si el usuario lleva más de 10 minutos en onboarding, redirigir
+        const emergencyTimeout = setTimeout(() => {
+            logger.log("🚨 Timeout de emergencia en onboarding - redirigiendo al login");
+            toast.error("Sesión expirada. Volviendo al login...", { duration: 3000 });
+            handleLogout();
+        }, 10 * 60 * 1000); // 10 minutos
+
+        return () => clearTimeout(emergencyTimeout);
+    }, [hasLoadedFromStorage, authLoading]);
+
+    useEffect(() => {
+        const handleOnline = () => {
+            logger.log("🌐 Conexión restaurada");
+        };
+
+        const handleOffline = () => {
+            logger.log("🚫 Conexión perdida");
+            toast.error("Conexión perdida. Verificá tu internet.", { duration: 5000 });
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     // Sincronizar selects con react-hook-form
     useEffect(() => {
@@ -83,12 +144,14 @@ export default function OnboardingPage() {
         }
     }, [selectedLocalidad, setValue]);
 
-    // 🔥 FUNCIONES Y HANDLERS
+    // ============================================================================
+    // HANDLERS
+    // ============================================================================
+
     const onSubmit = async (formData: OnboardingData) => {
         if (!token || !user) {
-            toast.error("Error de sesión. Inicia sesión nuevamente.");
-            await logout();
-            router.push("/login");
+            toast.error("Error de sesión. Inicia sesión nuevamente");
+            await handleLogout();
             return;
         }
 
@@ -114,43 +177,126 @@ export default function OnboardingPage() {
                 }
             };
 
+            logger.log("📤 Enviando datos de usuario:", dataToSave);
+
+            // 🔥 PASO 1: CREAR USUARIO EN BD
             const res = await createUser(dataToSave, token);
 
             if (!res.ok) {
-                toast.error("Error al completar el perfil: " + (res.data?.error || "Intenta nuevamente"), { id: toastId });
+                const errorMsg = res.data?.error || res.data?.message || "Error desconocido";
+                logger.error("❌ Error creando usuario en BD:", errorMsg);
+
+                toast.error(`Error al completar el perfil: ${errorMsg}. Volviendo al login...`, {
+                    id: toastId,
+                    duration: 4000
+                });
+
+                setTimeout(async () => {
+                    await handleLogout();
+                }, 2000);
                 return;
             }
 
-            // Completar onboarding exitosamente
-            toast.success("¡Perfil completado exitosamente! Bienvenido a Loopin", { id: toastId });
+            logger.log("✅ Usuario creado en BD exitosamente");
 
-            // Marcar onboarding como completado
-            completeOnboarding();
+            // 🔥 PASO 2: COMPLETAR ONBOARDING Y DEJAR QUE AUTHCONTEXT MANEJE TODO
+            try {
+                logger.log("🔄 Ejecutando completeOnboarding...");
+                await completeOnboarding();
+                logger.log("✅ CompleteOnboarding ejecutado exitosamente");
 
-            // Pequeña pausa para mostrar el éxito y luego redirigir
-            setTimeout(() => {
-                router.push("/home");
-            }, 1500);
+                // ✅ TODO SALIÓ BIEN - MOSTRAR MENSAJE Y DEJAR QUE AUTHCONTEXT REDIRIJA
+                toast.success("¡Perfil completado exitosamente! Bienvenido a Loopin", {
+                    id: toastId,
+                    duration: 2000
+                });
+
+                // 🎯 NO REDIRIGIR MANUALMENTE - dejar que AuthContext y sus useEffect manejen la redirección
+                logger.log("🔄 Onboarding completado - esperando redirección automática del AuthContext");
+
+            } catch (onboardingError) {
+                logger.error("❌ Error en completeOnboarding:", onboardingError);
+
+                toast.error("Error al finalizar el proceso. Volviendo al login...", {
+                    id: toastId,
+                    duration: 4000
+                });
+
+                setTimeout(async () => {
+                    await handleLogout();
+                }, 2000);
+                return;
+            }
 
         } catch (error: any) {
-            console.error("❌ Error en onboarding:", error);
-            toast.error("Error inesperado: " + error.message, { id: toastId });
+            logger.error("❌ Error general en onboarding:", error);
+
+            toast.error(`Error inesperado: ${error.message || 'Algo salió mal'}. Volviendo al login...`, {
+                id: toastId,
+                duration: 4000
+            });
+
+            setTimeout(async () => {
+                await handleLogout();
+            }, 2000);
         } finally {
             setIsLoading(false);
         }
     };
 
+    // 🔧 FUNCIÓN HELPER PARA LOGOUT ROBUSTO
     const handleLogout = async () => {
-        await logout();
-        router.push("/");
-    };
+        try {
+            logger.log("🚪 Cerrando sesión desde onboarding");
+            setIsLoading(true); // Prevenir múltiples clicks
 
-    // 🔥 RENDERS CONDICIONALES - DESPUÉS DE TODOS LOS HOOKS
+            await logout();
+
+            // Pequeño delay para asegurar que el logout se complete
+            setTimeout(() => {
+                router.push("/login");
+            }, 500);
+
+        } catch (error) {
+            logger.error("❌ Error en logout, forzando redirección:", error);
+
+            // Limpiar storage manualmente si falla el logout
+            try {
+                localStorage.removeItem('token');
+                sessionStorage.clear();
+            } catch (storageError) {
+                logger.error("❌ Error limpiando storage:", storageError);
+            }
+
+            // Forzar redirección inmediata
+            window.location.href = "/login";
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    // ============================================================================
+    // RENDERS CONDICIONALES
+    // ============================================================================
+
     // Loading mientras se verifica el estado
-    if (authLoading || !needsOnboarding) {
+    if (!hasLoadedFromStorage || authLoading) {
         return (
             <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
-                <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
+                <div className="text-center">
+                    <SpinnerLoader color="text-[var(--violet)]" size="h-8 w-8" />
+                    <p className="mt-4 text-[var(--violet)] font-semibold">Cargando...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Si no necesita onboarding, mostrar mensaje
+    if (!needsOnboarding) {
+        return (
+            <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
+                <div className="text-center">
+                    <p className="text-[var(--violet)] text-lg font-semibold">Redirigiendo...</p>
+                </div>
             </div>
         );
     }
@@ -171,19 +317,23 @@ export default function OnboardingPage() {
         );
     }
 
+    // ============================================================================
+    // RENDER PRINCIPAL
+    // ============================================================================
+
     return (
         <div className="h-screen bg-gradient-to-br from-[var(--violet-50)] to-white flex items-center justify-center p-6">
             <style jsx>{`
-          :root {
-            --violet: #8b5cf6;
-            --violet-50: #f3f0ff;
-            --violet-200: #c4b5fd;
-            --rose: #f43f5e;
-            --white: #ffffff;
-            --black: #1f2937;
-            --gray: #9ca3af;
-          }
-        `}</style>
+        :root {
+          --violet: #8b5cf6;
+          --violet-50: #f3f0ff;
+          --violet-200: #c4b5fd;
+          --rose: #f43f5e;
+          --white: #ffffff;
+          --black: #1f2937;
+          --gray: #9ca3af;
+        }
+      `}</style>
 
             {/* Elementos decorativos */}
             <div className="absolute top-20 left-10 w-20 h-20 bg-[var(--rose)]/20 rounded-full animate-pulse"></div>
