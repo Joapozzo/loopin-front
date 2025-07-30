@@ -1,7 +1,6 @@
-// hooks/useSucursales.ts
 "use client";
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SucursalService } from '../services/sucursal.service';
 import { useMemo } from 'react';
 import { Sucursal } from '@/types/sucursal';
@@ -10,7 +9,7 @@ export interface UseSucursalesConfig {
     enabled?: boolean;
 }
 
-export interface UseSucursalesReturn {
+export interface UseSucursalesBaseReturn {
     sucursales: Sucursal[];
     loading: boolean;
     error: string | null;
@@ -20,6 +19,11 @@ export interface UseSucursalesReturn {
     totalSucursales: number;
 }
 
+export interface UseSucursalesReturn extends UseSucursalesBaseReturn {
+    updateSucursalPhoto: (file: File) => Promise<{ mensaje: string; suc_url_foto: string }>;
+    getSucursalByName: (name: string) => Sucursal | undefined;
+    isUpdatingPhoto: boolean;
+}
 const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // 🎯 HOOK 1: Todas las sucursales del sistema
@@ -43,6 +47,7 @@ export const useSucursales = (config: UseSucursalesConfig = {}): UseSucursalesRe
     });
 
     const sucursales = response?.sucursales || [];
+    const queryClient = useQueryClient();
 
     const refresh = async () => {
         await refetch();
@@ -56,18 +61,47 @@ export const useSucursales = (config: UseSucursalesConfig = {}): UseSucursalesRe
         return sucursales.filter(sucursal => sucursal.suc_activo === 1);
     }, [sucursales]);
 
+    const updatePhotoMutation = useMutation({
+        mutationFn: async (file: File) => {
+            return await sucursalService.updateSucursalPhoto(file);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sucursales'] });
+        }
+    });
+
+    const getSucursalByName = useMemo(() => {
+        return (name: string): Sucursal | undefined => {
+            const normalizedSearchName = name
+                .toLowerCase()
+                .replace(/-/g, ' ')
+                .trim();
+
+            return sucursales.find(sucursal => {
+                const normalizedSucName = sucursal.suc_nom
+                    .toLowerCase()
+                    .trim();
+
+                return normalizedSucName === normalizedSearchName;
+            });
+        };
+    }, [sucursales]);
+
     return {
         sucursales,
         loading: isLoading,
         error: error?.message || null,
         refresh,
         getSucursalById,
+        getSucursalByName,
         sucursalesActivas,
         totalSucursales: sucursales.length,
+        updateSucursalPhoto: async (file: File) => await updatePhotoMutation.mutateAsync(file),
+        isUpdatingPhoto: updatePhotoMutation.isPending,
     };
 };
 
-export const useSucursalesCliente = (config: UseSucursalesConfig = {}): UseSucursalesReturn & {
+export const useSucursalesCliente = (config: UseSucursalesConfig = {}): UseSucursalesBaseReturn & {
     sucursalesAdheridasSet: Set<number>;
     isAdherida: (sucId: number | string, negId: number | string) => boolean
     getSucursalByName: (name: string) => Sucursal | undefined;
@@ -151,7 +185,7 @@ export const useSucursalesCliente = (config: UseSucursalesConfig = {}): UseSucur
         totalSucursales: sucursales.length,
         sucursalesAdheridasSet,
         isAdherida,
-        getSucursalByName
+        getSucursalByName,
     };
 };
 

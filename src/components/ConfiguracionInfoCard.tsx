@@ -40,6 +40,7 @@ export const ConfiguracionInfoCard: React.FC<ConfiguracionInfoCardProps> = ({
                             type="text"
                             label="Nombre del Restaurante"
                             defaultValue={data.suc_nom}
+                            disabled
                         />
                     ) : (
                         <Input
@@ -99,7 +100,7 @@ export const ConfiguracionInfoCard: React.FC<ConfiguracionInfoCardProps> = ({
                 <div>
                     {isEditing ? (
                         <>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-500 mb-2">
                                 <Palette className="w-4 h-4 inline mr-1" />
                                 Color del Tema
                             </label>
@@ -107,7 +108,7 @@ export const ConfiguracionInfoCard: React.FC<ConfiguracionInfoCardProps> = ({
                                 <input
                                     type="color"
                                     defaultValue={data.suc_color}
-                                    className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+                                    className="w-12 h-11 border border-gray-300 rounded-lg cursor-pointer"
                                 />
                                 <Input
                                     type="text"
@@ -118,13 +119,13 @@ export const ConfiguracionInfoCard: React.FC<ConfiguracionInfoCardProps> = ({
                         </>
                     ) : (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-400 mb-2">
                                 <Palette className="w-4 h-4 inline mr-1" />
                                 Color del Tema
                             </label>
                             <div className="flex items-center space-x-3">
                                 <div 
-                                    className="w-12 h-10 rounded border border-gray-300"
+                                    className="w-12 h-11 rounded border border-gray-300"
                                     style={{ backgroundColor: data.suc_color }}
                                 ></div>
                                 <Input

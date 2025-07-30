@@ -20,20 +20,20 @@ export default function Page() {
 
     const filteredRestaurantes = useMemo(() => {
         let resultado = [...sucursales];
-        
+
         // 🔍 1. Filtrar por término de búsqueda
         if (searchTerm.trim()) {
             resultado = resultado.filter((restaurant: Sucursal) =>
                 restaurant.suc_nom.toLowerCase().includes(searchTerm.toLowerCase().trim())
             );
         }
-        
+
         // 🔤 2. Ordenar alfabéticamente si está activado
         if (alphabeticalOrder !== 'none') {
             resultado.sort((a, b) => {
                 const nameA = a.suc_nom.toLowerCase();
                 const nameB = b.suc_nom.toLowerCase();
-                
+
                 if (alphabeticalOrder === 'asc') {
                     return nameA.localeCompare(nameB);
                 } else {
@@ -41,7 +41,7 @@ export default function Page() {
                 }
             });
         }
-        
+
         return resultado;
     }, [sucursales, searchTerm, alphabeticalOrder]);
 
@@ -74,10 +74,10 @@ export default function Page() {
             <MobileLayout>
                 <Section>
                     {filteredRestaurantes.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 w-full">
+                        <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-4 w-full">
                             {filteredRestaurantes.map((rest) => (
                                 <CardRest
-                                    key={rest.suc_id-rest.neg_id}
+                                    key={rest.suc_id - rest.neg_id}
                                     restaurant={rest}
                                     selected
                                 />

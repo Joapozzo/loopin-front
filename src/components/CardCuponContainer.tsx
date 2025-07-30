@@ -21,7 +21,7 @@ export default function CardCuponContainer({ tipo = 'activos' }: CardCuponContai
             : "No tenés cupones utilizados aún.";
 
         return (
-            <div className="w-full text-start pb-8 text-gray-500">
+            <div className="w-full text-start text-gray-500">
                 {mensaje}
             </div>
         );

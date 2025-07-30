@@ -2,6 +2,7 @@
 import React from 'react';
 import { Package, Check } from 'lucide-react';
 import { Product } from '@/types/product';
+import Image from 'next/image';
 
 export interface ProductoCardProps {
     producto: Product;
@@ -20,13 +21,16 @@ export const ProductoCard: React.FC<ProductoCardProps> = ({
 
     return (
         <div
-            className={`relative cursor-pointer transition-all duration-200 hover:scale-102 ${isSelected ? "rounded-lg ring-[var(--rose)] shadow-lg" : "hover:shadow-md"}`}
+            className={`relative cursor-pointer transition-all duration-200 hover:scale-102 ${isSelected
+                    ? "rounded-lg ring-[var(--rose)] shadow-lg"
+                    : "hover:shadow-md"
+                }`}
             onClick={handleClick}
         >
             <div
                 className={`bg-white rounded-xl border-2 p-4 h-full ${isSelected
-                    ? "border-[var(--rose)] bg-[var(--rose)]"
-                    : "border-gray-200 hover:border-[var(--rose)]"
+                        ? "border-[var(--rose)] bg-[var(--rose)]"
+                        : "border-gray-200 hover:border-[var(--rose)]"
                     }`}
             >
                 {/* Selected indicator */}
@@ -39,10 +43,12 @@ export const ProductoCard: React.FC<ProductoCardProps> = ({
                 {/* Imagen del producto */}
                 <div className="relative mb-3 bg-gray-100 rounded-lg overflow-hidden aspect-square">
                     {producto.pro_url_foto ? (
-                        <img
+                        <Image
                             src={producto.pro_url_foto}
                             alt={producto.pro_nom}
                             className="w-full h-full object-cover"
+                            width={120}
+                            height={120}
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center">

@@ -56,7 +56,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
                     } ${props.disabled ? 'opacity-50 cursor-not-allowed' : ''}`,
                 iconContainer: "absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[var(--violet-100)] z-20",
                 arrowContainer: "absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[var(--violet-100)] z-10",
-                select: `w-full bg-transparent border-none outline-none text-lg font-medium text-white py-2 appearance-none ${icon ? 'pl-10' : 'pl-3'} pr-10 ${props.disabled ? 'cursor-not-allowed' : ''}`,
+                select: `w-full bg-transparent border-none outline-none text-lg font-light text-white py-2 appearance-none ${icon ? 'pl-10' : 'pl-3'} pr-10 ${props.disabled ? 'cursor-not-allowed' : ''}`,
                 option: "bg-[var(--violet-200)] text-white",
                 placeholderOption: "bg-[var(--violet-200)] text-[var(--violet-50)]",
                 error: "mt-1 text-sm text-red-300",
@@ -74,9 +74,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
                     } ${props.disabled ? "opacity-50 cursor-not-allowed" : ""}`,
                 iconContainer: "absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[var(--violet)] z-10",
                 arrowContainer: "absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[var(--violet-200)] z-10",
-                select: `w-full bg-transparent border-none outline-none text-lg font-medium text-[var(--violet)] py-2 appearance-none ${icon ? 'pl-10' : 'pl-3'} pr-10 ${props.disabled ? "cursor-not-allowed" : ""}`,
-                option: "text-gray-700 font-medium",
-                placeholderOption: "text-[var(--violet-200)] font-medium",
+                select: `w-full bg-transparent border-none outline-none text-lg font-light text-[var(--violet)] py-2 appearance-none ${icon ? 'pl-10' : 'pl-3'} pr-10 ${props.disabled ? "cursor-not-allowed" : ""}`,
+                option: "text-gray-700 font-light",
+                placeholderOption: "text-[var(--violet-200)] font-light",
                 error: "mt-1 text-sm text-red-300",
                 helpText: "mt-1 text-sm text-gray-500",
             };
@@ -89,11 +89,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
                 selectWrapper: "relative w-full",
                 iconContainer: "absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[var(--violet-200)] z-10",
                 arrowContainer: "absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[var(--violet-200)] z-10",
-                select: `w-full rounded-lg text-sm font-medium bg-white border text-gray-700 focus:outline-none focus:ring-2 appearance-none py-3 transition-all duration-200 ${icon ? "pl-10" : "pl-3"} pr-10 ${error
+                select: `w-full rounded-lg text-sm font-light bg-white border text-gray-700 focus:outline-none focus:ring-2 appearance-none py-3 transition-all duration-200 ${icon ? "pl-10" : "pl-3"} pr-10 ${error
                     ? "border-[var(--rose)] focus:ring-[var(--rose)] focus:border-[var(--rose)]"
                     : "border-[var(--violet-100)] focus:ring-[var(--violet-200)] focus:border-[var(--violet-200)] hover:border-[var(--violet-200)]"
                     } ${props.disabled ? "opacity-50 cursor-not-allowed bg-gray-100" : ""}`,
-                option: "text-gray-700 font-medium",
+                option: "text-gray-700 font-light",
                 placeholderOption: "text-gray-500",
                 error: "text-sm text-[var(--rose)] mt-1",
                 helpText: "text-sm text-gray-400 mt-1",
@@ -107,11 +107,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
             selectWrapper: "relative w-full",
             iconContainer: "absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-[var(--violet-200)] z-10",
             arrowContainer: "absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[var(--violet-200)] z-10",
-            select: `w-full rounded-lg text-sm font-medium bg-white border text-gray-700 focus:outline-none focus:ring-2 appearance-none py-3 transition-all duration-200 ${icon ? 'pl-10' : 'pl-3'} pr-10 ${error
+            select: `w-full rounded-lg text-sm font-light bg-white border text-gray-700 focus:outline-none focus:ring-2 appearance-none py-3 transition-all duration-200 ${icon ? 'pl-10' : 'pl-3'} pr-10 ${error
                 ? 'border-[var(--rose)] focus:ring-[var(--rose)] focus:border-[var(--rose)]'
                 : 'border-[var(--violet-100)] focus:ring-[var(--violet-200)] focus:border-[var(--violet-200)] hover:border-[var(--violet-200)]'
                 } ${props.disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`,
-            option: "text-gray-700 font-medium",
+            option: "text-gray-700 font-light",
             placeholderOption: "text-gray-500",
             error: "text-sm text-[var(--rose)] mt-1",
             helpText: "text-sm text-gray-400 mt-1"

@@ -11,21 +11,23 @@ import Icon from "@/components/ui/Icon";
 import PuntosCounter from "@/components/PuntosCounter";
 import { useParams, useRouter } from "next/navigation";
 import { Bell, CreditCard, Heart, MapPin } from "lucide-react";
-import { useSucursalesCliente } from "@/hooks/useSucursales";
+import { useSucursales, useSucursalesCliente } from "@/hooks/useSucursales";
 import { useTarjetas } from "@/hooks/useTarjetas";
 import { useCallback, useEffect, useState } from "react";
 import { Sucursal } from "@/types/sucursal";
 import { logger } from "@/utils/logger";
+import Image from "next/image";
+import { getCleanUrl } from "@/data/utils";
 
 
 export default function Page() {
     const { name } = useParams();
     const router = useRouter();
-    // const { suc_id, neg_id } = useParams();
-    const { getSucursalById, loading, getSucursalByName, isAdherida } = useSucursalesCliente();
-    // const { isAdherida } = useSucursalesCliente();
+
+    const { loading, getSucursalByName, isAdherida } = useSucursalesCliente();
+    const { getSucursalByName: getSucursalGeneralByName } = useSucursales();
+
     const { getTarjetaBySucursal } = useTarjetas();
-    // const sucursal = getSucursalById(Number(suc_id), Number(neg_id));
 
     const [sucursal, setSucursal] = useState<Sucursal | null>(null);
     const [sucursalIds, setSucursalIds] = useState<{ suc_id: number | null, neg_id: number | null }>({
@@ -36,10 +38,14 @@ export default function Page() {
     const searchSucursal = useCallback(() => {
         if (name && !loading) {
             const decodedName = decodeURIComponent(name as string);
-            logger.log('🔍 Buscando sucursal:', decodedName);
 
-            const foundSucursal = getSucursalByName(decodedName);
-            logger.log('🎯 Sucursal encontrada:', foundSucursal);
+            // Primero buscar en sucursales del cliente
+            let foundSucursal = getSucursalByName(decodedName);
+
+            // Si no está adherido, buscar en todas las sucursales
+            if (!foundSucursal) {
+                foundSucursal = getSucursalGeneralByName(decodedName);
+            }
 
             if (foundSucursal) {
                 setSucursal(foundSucursal);
@@ -48,11 +54,10 @@ export default function Page() {
                     neg_id: foundSucursal.neg_id
                 });
             } else {
-                logger.warn(`Sucursal no encontrada: ${decodedName}`);
                 router.push('/restaurantes');
             }
         }
-    }, [name, loading, getSucursalByName, router]);
+    }, [name, loading, getSucursalByName, getSucursalGeneralByName, router]);
 
     useEffect(() => {
         searchSucursal();
@@ -85,7 +90,29 @@ export default function Page() {
                             <Icon name="heart" filled={restauranteIsAdherido} />
                         </span>
                     </div>
-                    <div className="w-full overflow-x-auto no-scrollbar">
+                    {/* Información del restaurante - Solo en móvil */}
+                    <div className="md:hidden w-full">
+                        <Section>
+                            <div className="flex flex-col w-full">
+                                {/* <TextShadow>{restaurante.category}</TextShadow> */}
+                                <h2 className="text-2xl font-bold text-white/90">
+                                    {sucursal.suc_nom}
+                                </h2>
+                            </div>
+                            <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 flex items-center justify-center shadow-sm border border-white/60 hover:shadow-md hover:border-[var(--rose)] transition-all duration-200 min-h-[6rem]">
+                                <Image
+                                    src={getCleanUrl(sucursal.suc_url_foto)}
+                                    // src={
+                                    // src={
+                                    alt="logo"
+                                    className="w-20 h-20 object-contain"
+                                    width={64}
+                                    height={64}
+                                />
+                            </div>
+                        </Section>
+                    </div>
+                    {/* <div className="w-full overflow-x-auto no-scrollbar">
                         <div className="flex gap-4 w-max px-2 py-3">
                             {[1, 2, 3, 4].map((n) => (
                                 <img
@@ -96,7 +123,7 @@ export default function Page() {
                                 />
                             ))}
                         </div>
-                    </div>
+                    </div> */}
                 </HeroLayout>
             </div>
 
@@ -152,7 +179,7 @@ export default function Page() {
                     </GradientCard>
 
                     {/* Galería de imágenes */}
-                    <GradientCard delay={0.1}>
+                    {/* <GradientCard delay={0.1}>
                         <div className="mb-4">
                             <h2 className="text-[var(--violet)] text-lg font-semibold mb-2">
                                 Galería
@@ -178,31 +205,12 @@ export default function Page() {
                                 ))}
                             </div>
                         </div>
-                    </GradientCard>
+                    </GradientCard> */}
                 </div>
             </div>
 
             {/* Contenido con padding solo en móvil */}
             <MobileLayout>
-                {/* Información del restaurante - Solo en móvil */}
-                <div className="md:hidden">
-                    <Section>
-                        <div className="flex flex-col w-full">
-                            {/* <TextShadow>{restaurante.category}</TextShadow> */}
-                            <h2 className="text-2xl font-bold text-[var(--violet)] mt-4">
-                                {sucursal.suc_nom}
-                            </h2>
-                        </div>
-                        <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 flex items-center justify-center shadow-sm border border-white/60 hover:shadow-md hover:border-[var(--rose)] transition-all duration-200 min-h-[6rem]">
-                            <img
-                                src="/logos/logo-chez.svg"
-                                alt="logo"
-                                className="w-20 h-20 object-contain"
-                            />
-                        </div>
-                    </Section>
-                </div>
-
                 {/* Ubicación */}
                 <Section title="Ubicación">
                     <div className="w-full h-60 p-2 bg-[var(--violet)] rounded-xl shadow-md">

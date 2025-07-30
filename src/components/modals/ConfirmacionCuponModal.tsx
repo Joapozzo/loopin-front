@@ -36,26 +36,20 @@ export default function ConfirmacionCuponModal() {
         openModal("cupon");
     };
 
-    const puntosActuales = 1500; // Este valor debería venir de tu store/context de usuario
-    const puntosRestantes = puntosActuales - (producto?.pro_puntos_canje || 0);
-
     return (
         <div
-            className={`fixed inset-0 z-99 flex items-center justify-center transition-all duration-300 ${
-                isMounted ? "opacity-100" : "opacity-0"
-            } ${
-                isClosing
+            className={`fixed inset-0 z-99 flex items-center justify-center transition-all duration-300 ${isMounted ? "opacity-100" : "opacity-0"
+                } ${isClosing
                     ? "backdrop-blur-none bg-black/0"
                     : "backdrop-blur-sm bg-black/60"
-            }`}
+                }`}
             onClick={closeAndClearModal}
         >
             <div
-                className={`relative bg-[var(--violet)] text-[var(--white)] rounded-2xl p-8 w-[90%] max-w-md shadow-xl transition-all duration-300 ${
-                    isMounted && !isClosing
+                className={`relative bg-[var(--violet)] text-[var(--white)] rounded-2xl p-8 w-[90%] max-w-md shadow-xl transition-all duration-300 ${isMounted && !isClosing
                         ? "opacity-100 scale-100 translate-y-0"
                         : "opacity-0 scale-95 translate-y-8"
-                }`}
+                    }`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <button
@@ -71,9 +65,8 @@ export default function ConfirmacionCuponModal() {
                             <AlertTriangle size={32} className="text-[var(--violet-200)]" />
                         </div>
                         <span
-                            className={`bg-[var(--violet-200)] text-[var(--violet-600)] px-3 py-1 rounded-lg font-bold text-lg transition-all duration-500 delay-100 ${
-                                isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
-                            }`}
+                            className={`bg-[var(--violet-200)] text-[var(--violet-600)] px-3 py-1 rounded-lg font-bold text-lg transition-all duration-500 delay-100 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+                                }`}
                         >
                             CONFIRMAR CANJE
                         </span>
@@ -81,9 +74,8 @@ export default function ConfirmacionCuponModal() {
 
                     {producto && (
                         <div
-                            className={`flex gap-4 transition-all duration-500 delay-150 ${
-                                isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
-                            }`}
+                            className={`flex gap-4 transition-all duration-500 delay-150 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+                                }`}
                         >
                             <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-[var(--violet-600)]">
                                 <Image
@@ -94,7 +86,7 @@ export default function ConfirmacionCuponModal() {
                                     className="w-full h-full object-cover"
                                 />
                             </div>
-                            <div className="flex-1">
+                            <div className="flex flex-col items-start justify-center">
                                 <h3 className="font-bold text-lg leading-tight">{producto.pro_nom}</h3>
                                 <p className="text-[var(--violet-100)] text-sm">{producto.suc_nom}</p>
                             </div>
@@ -102,17 +94,15 @@ export default function ConfirmacionCuponModal() {
                     )}
 
                     <div
-                        className={`text-center text-md text-[var(--violet-100)] transition-all duration-500 delay-250 ${
-                            isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
-                        }`}
+                        className={`text-center text-md text-[var(--violet-100)] transition-all duration-500 delay-250 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+                            }`}
                     >
                         ¿Estás seguro de que deseas canjear este producto? Se descontarán {producto?.pro_puntos_canje} puntos de tu cuenta.
                     </div>
 
                     <div
-                        className={`flex gap-3 pt-4 transition-all duration-500 delay-300 ${
-                            isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
-                        }`}
+                        className={`flex gap-3 pt-4 transition-all duration-500 delay-300 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+                            }`}
                     >
                         <Button
                             onClick={closeAndClearModal}

@@ -161,7 +161,7 @@ export default function CuponModal() {
                     <X size={24} className="hover:rotate-90 transition-transform duration-200" />
                 </button>
 
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                     <span
                         className={`bg-[var(--violet-200)] text-[var(--violet-600)] px-3 py-1 rounded-lg w-fit font-bold text-lg transition-all duration-500 delay-100 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                             }`}
@@ -170,27 +170,27 @@ export default function CuponModal() {
                     </span>
 
                     <h2
-                        className={`text-xl font-bold transition-all duration-500 delay-150 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+                        className={`text-xl font-semibold transition-all duration-500 delay-150 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                             }`}
                     >
                         {producto?.pro_nom} por {producto?.pro_puntos_canje} puntos
                     </h2>
 
                     <div
-                        className={`flex flex-col gap-1 transition-all duration-500 delay-200 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+                        className={`flex items-star flex-col transition-all duration-500 delay-200 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                             }`}
                     >
-                        <p className="text-sm font-semibold text-[var(--violet-100)]">Válido hasta:</p>
-                        <p className="text-md font-bold">{fechaExpiracion}</p>
+                        <p className="text-sm font-medium text-[var(--violet-100)]">Válido hasta:</p>
+                        <p className="text-lg font-semibold">{fechaExpiracion}</p>
                     </div>
 
                     <div
                         className={`flex flex-col gap-2 transition-all duration-500 delay-250 ${isMounted && !isClosing ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
                             }`}
                     >
-                        <p className="text-sm font-semibold text-[var(--violet-100)]">Código:</p>
-                        <div className="bg-[var(--violet-600)] rounded-lg text-start p-3">
-                            <p className="text-2xl font-bold tracking-widest text-center">
+                        <p className="text-sm font-semibold text-[var(--violet-100)] flex flex-col items-start ">Código:</p>
+                        <div className="bg-[var(--violet-600)] rounded-lg text-start">
+                            <p className="text-3xl font-bold tracking-widest text-start">
                                 {codigoResponse.codigo_cupon}
                             </p>
                         </div>

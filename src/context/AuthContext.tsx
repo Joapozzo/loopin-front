@@ -118,8 +118,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 },
             });
 
-            if (clienteResponse.ok) {
-                const clienteData = await clienteResponse.json();
+            const clienteData = await clienteResponse.json();
+            if (clienteData) {
                 logger.log("✅ CLIENTE validado exitosamente:", clienteData);
                 return "cliente";
             }
@@ -135,8 +135,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 },
             });
 
-            if (encargadoResponse.ok) {
-                const encargadoData = await encargadoResponse.json();
+            const encargadoData = await encargadoResponse.json();
+            if (encargadoData) {
                 logger.log("✅ ENCARGADO validado exitosamente:", encargadoData);
                 return "encargado";
             }
@@ -286,23 +286,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const logout = async () => {
         try {
+            const toastId = toast.loading("Cerrando sesión...");
             logger.log("🚪 Cerrando sesión");
 
+            // 1. Limpiamos todo
             await signOut(auth);
             authCookies.clearAuth();
             store.reset();
 
-            // 🎯 Usar router.push en lugar de window.location.href para evitar refresh
-            router.push("/login");
+            // 2. Mostramos el toast de éxito
+            toast.success("Cierre de sesión exitoso", { id: toastId });
+
+            // 3. Esperamos un poco para que el usuario lo vea
+            setTimeout(() => {
+                router.push("/login");
+            }, 2000); // ⏱️ Podés ajustar este delay si hace falta
 
         } catch (error) {
             logger.error("❌ Error en logout:", error);
-            // Forzar limpieza local aunque falle el signOut
+
+            // 4. Siempre limpiamos aunque haya error
             authCookies.clearAuth();
             store.reset();
 
-            // Solo usar window.location.href como último recurso
-            router.push("/login");
+            toast.error("Error al cerrar sesión. Redirigiendo...", { duration: 2000 });
+
+            // 5. Redirigimos igual (con pequeño delay opcional)
+            setTimeout(() => {
+                router.push("/login");
+            }, 1500);
         }
     };
 

@@ -10,15 +10,15 @@ import BackButton from "@/components/ui/buttons/BackButton";
 import Icon from "@/components/ui/Icon";
 import { useConfigStore } from "@/stores/useConfigStore";
 import { useCanjes } from "@/hooks/useCanjes";
-import { User, Store, Mail, PhoneCall, MapPin, Ticket, Settings, History, TrendingUp, Gift, WalletCards } from "lucide-react";
+import { User, Store, Mail, PhoneCall, MapPin, Ticket, Settings, History, TrendingUp, Gift, WalletCards, LogOutIcon } from "lucide-react";
 import { useUserProfile } from "@/hooks/userProfile";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Page() {
     const { toggle } = useConfigStore();
     const { userData: usuario } = useUserProfile();
 
-    // Hook para obtener el historial de canjes del cliente
     const {
         estadisticas,
         loadingCliente,
@@ -28,6 +28,8 @@ export default function Page() {
         tipoVista: 'cliente',
         enabled: true
     });
+
+    const { logout } = useAuth();
 
     if (!usuario) {
         return (
@@ -51,6 +53,7 @@ export default function Page() {
                         <BackButton />
                         <span className="flex items-center justify-center gap-2">
                             <Icon name="settings" onClick={toggle} />
+                            <Icon name="logout" onClick={logout} backgroundColor='var(--rose)'/>
                         </span>
                     </div>
                     <div className="flex items-center flex-col gap-4 w-full">
@@ -61,7 +64,7 @@ export default function Page() {
                         />
                         <div className="flex flex-col items-center justify-center">
                             <h3 className="text-3xl font-medium text-white">{usuario.cli_nom} {usuario.cli_ape}</h3>
-                            <p className="text-sm text-white/80">Nivel Básico</p>
+                            {/* <p className="text-sm text-white/80">Nivel Básico</p> */}
                         </div>
                         <div className="flex items-center gap-1">
                             <h4 className="text-4xl font-bold text-white">
@@ -109,13 +112,13 @@ export default function Page() {
                                 <h2 className="text-[var(--violet)] text-2xl font-medium mb-2">
                                     {usuario.cli_nom} {usuario.cli_ape}
                                 </h2>
-                                <div className="flex items-center gap-3">
+                                {/* <div className="flex items-center gap-3">
                                     <div className="bg-white/70 rounded-lg px-4 py-2 border border-white/60">
                                         <p className="text-[var(--violet)] font-semibold text-sm">
                                             Nivel básico
                                         </p>
                                     </div>
-                                </div>
+                                </div> */}
                             </div>
                         </div>
                     </GradientCard>

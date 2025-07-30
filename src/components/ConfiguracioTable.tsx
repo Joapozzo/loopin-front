@@ -94,8 +94,14 @@ export const ConfiguracionTable: React.FC = () => {
                 </div>
             </div>
 
-            {/* Grid de cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Logo del Restaurante - Ocupa toda la fila */}
+                <div className="lg:col-span-2">
+                    <ConfiguracionLogoCard
+                        logoUrl={restauranteData.suc_url_foto}
+                    />
+                </div>
+
                 {/* Información del Restaurante */}
                 <ConfiguracionInfoCard
                     data={restauranteData}
@@ -108,15 +114,10 @@ export const ConfiguracionTable: React.FC = () => {
                     isEditing={isEditing}
                 />
 
-                {/* Logo del Restaurante */}
-                <ConfiguracionLogoCard
-                    logoUrl={restauranteData.suc_url_foto}
-                />
-
                 {/* Galería de Imágenes */}
-                <ConfiguracionGaleriaCard
+                {/* <ConfiguracionGaleriaCard
                     imagenes={galeria}
-                />
+                /> */}
             </div>
         </div>
     );

@@ -100,6 +100,49 @@ body {
   }
 }
 
+/* Desactivar estilos de autocompletado en inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: inset 0 0 0px 1000px transparent !important;
+    -webkit-text-fill-color: inherit !important;
+    background-color: transparent !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Para inputs con variant outline */
+.input-outline:-webkit-autofill,
+.input-outline:-webkit-autofill:hover,
+.input-outline:-webkit-autofill:focus,
+.input-outline:-webkit-autofill:active {
+    -webkit-text-fill-color: white !important;
+}
+
+/* Para inputs con variant default */
+.input-default:-webkit-autofill,
+.input-default:-webkit-autofill:hover,
+.input-default:-webkit-autofill:focus,
+.input-default:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--violet) !important;
+}
+
+/* Para inputs con variant error */
+.input-error:-webkit-autofill,
+.input-error:-webkit-autofill:hover,
+.input-error:-webkit-autofill:focus,
+.input-error:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--violet) !important;
+}
+
+/* Para inputs con variant success */
+.input-success:-webkit-autofill,
+.input-success:-webkit-autofill:hover,
+.input-success:-webkit-autofill:focus,
+.input-success:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--violet) !important;
+}
+
 .animate-marquee {
   animation: marquee 20s linear infinite;
 }

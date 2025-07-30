@@ -26,9 +26,11 @@ import { useClientes } from '@/hooks/useClientes';
 import { useProductos } from '@/hooks/useProductos';
 import { useUserProfile } from '@/hooks/userProfile';
 import { useComercioData, useComercioEncargado } from '@/hooks/useComercioEncargado';
-import { useCupones } from '@/hooks/useCupones';
+// import { useCupones } from '@/hooks/useCupones';
 import { useVentas } from '@/hooks/useVentas';
 import { useCanjes } from '@/hooks/useCanjes';
+import Image from 'next/image';
+import { getCleanUrl } from '@/data/utils';
 
 const ManagerSidebar = () => {
     const router = useRouter();
@@ -41,15 +43,15 @@ const ManagerSidebar = () => {
     const { isExpanded, toggleSidebar } = useSidebar();
 
     const isLoadingData = profileLoading || comercioLoading || comercioDataLoading;
-    
+
     // Función para obtener el item activo basado en la ruta
     const getActiveItemFromPath = (path: string) => {
         if (path === '/res' || path === '/res/dashboard') return 'dashboard';
-        if (path.startsWith('/res/clientes')) return 'clientes';
-        if (path.startsWith('/res/productos')) return 'productos';
-        if (path.startsWith('/res/codigos')) return 'codigos';
         if (path.startsWith('/res/ventas')) return 'ventas';
+        if (path.startsWith('/res/codigos')) return 'codigos';
         if (path.startsWith('/res/canjes')) return 'canjes';
+        if (path.startsWith('/res/productos')) return 'productos';
+        if (path.startsWith('/res/clientes')) return 'clientes';
         if (path.startsWith('/res/reportes')) return 'reportes';
         if (path.startsWith('/res/configuracion')) return 'configuracion';
         return 'dashboard';
@@ -60,7 +62,7 @@ const ManagerSidebar = () => {
     const { clientesTotales } = useClientes({
         initialPageSize: 15,
     });
-    const { productosTotales } = useProductos();
+    const { productosTotales } = useProductos({ mode: 'sucursal' });
 
     const { comprasTotales } = useVentas()
     const { canjesTotales } = useCanjes({
@@ -71,11 +73,11 @@ const ManagerSidebar = () => {
         name: nombreCompleto || "Cargando...",
         restaurant: {
             name: comercioData?.suc_nom || "Cargando restaurante...",
-            logo: "/logos/logo-chez.svg",
+            logo: comercioData?.suc_url_foto,
             address: comercioData?.suc_dir || "Cargando dirección...",
             rating: 4.8,
             tel: comercioData?.suc_cel || "---",
-            category: "Parrilla Argentina"
+            category: "Comercio argentino"
         },
         stats: {
             clientesAdheridos: clientesTotales,
@@ -95,18 +97,11 @@ const ManagerSidebar = () => {
             description: "Vista general del restaurante",
         },
         {
-            id: "clientes",
-            label: "Clientes",
-            icon: <Users size={22} />,
-            description: "Gestión de clientes adheridos",
-            badge: managerData.stats.clientesAdheridos,
-        },
-        {
-            id: "productos",
-            label: "Productos",
-            icon: <ChefHat size={22} />,
-            description: "Gestión del menú y productos",
-            badge: managerData.stats.productosTotales,
+            id: "ventas",
+            label: "Ventas",
+            icon: <ShoppingBag size={22} />,
+            description: "Registro de compras y ventas",
+            badge: managerData.stats.comprasTotales,
         },
         {
             id: "codigos",
@@ -116,19 +111,26 @@ const ManagerSidebar = () => {
             // badge: managerData.stats.ventasHoy,
         },
         {
-            id: "ventas",
-            label: "Ventas",
-            icon: <ShoppingBag size={22} />,
-            description: "Registro de compras y ventas",
-            badge: managerData.stats.comprasTotales,
-        },
-        {
             id: "canjes",
             label: "Canjes",
             icon: <Gift size={22} />,
             description: "Confirmar canjes de puntos",
             badge: managerData.stats.canjesTotales,
             badgeColor: "bg-[var(--rose)]",
+        },
+        {
+            id: "productos",
+            label: "Productos",
+            icon: <ChefHat size={22} />,
+            description: "Gestión del menú y productos",
+            badge: managerData.stats.productosTotales,
+        },
+        {
+            id: "clientes",
+            label: "Clientes",
+            icon: <Users size={22} />,
+            description: "Gestión de clientes adheridos",
+            badge: managerData.stats.clientesAdheridos,
         },
     ];
 
@@ -156,9 +158,11 @@ const ManagerSidebar = () => {
                     <>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-2xl shadow-md backdrop-blur-sm flex-shrink-0">
-                                <img
-                                    src={managerData.restaurant.logo}
+                                <Image
+                                    src={managerData.restaurant.logo ? getCleanUrl(managerData.restaurant.logo) : ''}
                                     alt={managerData.restaurant.name}
+                                    width={64}
+                                    height={64}
                                 />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -167,8 +171,8 @@ const ManagerSidebar = () => {
                                     {managerData.restaurant.name}
                                 </h2>
                                 <div className="flex items-center space-x-1 text-sm text-white/60">
-                                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                    <span>{managerData.restaurant.rating}</span>
+                                    {/* <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                                    <span>{managerData.restaurant.rating}</span> */}
                                     <span>•</span>
                                     <span>{managerData.restaurant.category}</span>
                                 </div>
@@ -216,9 +220,11 @@ const ManagerSidebar = () => {
                 ) : (
                     <div className="flex flex-col items-center space-y-3">
                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-md backdrop-blur-sm">
-                            <img
-                                src={managerData.restaurant.logo}
+                            <Image
+                                src={managerData.restaurant.logo ? getCleanUrl(managerData.restaurant.logo) : ''}
                                 alt={managerData.restaurant.name}
+                                width={64}
+                                height={64}
                             />
                         </div>
                         <button

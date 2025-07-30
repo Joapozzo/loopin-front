@@ -83,7 +83,7 @@ export const useProductos = (config: UseProductosConfig = {}): UseProductosRetur
         error,
         refetch
     } = useQuery({
-        queryKey: ['productos', mode, config.negocioId, config.sucursalId, filters.sucursalId],
+        queryKey: ['productos', mode, ...(mode === 'by_sucursal_id' ? [config.negocioId, config.sucursalId] : []), filters.sucursalId],
         queryFn: async () => {
             if (mode === 'sucursal') {
                 return await productoService.getProductosSucursal(

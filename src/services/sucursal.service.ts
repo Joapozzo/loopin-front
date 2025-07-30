@@ -2,6 +2,7 @@ import { ApiClient } from '@/api/api';
 import { Sucursal } from '@/types/sucursal';
 
 export interface SucursalApiResponse {
+    sucursal: Sucursal;
     sucursales: Sucursal[];
     mensaje: string;
 }
@@ -10,6 +11,8 @@ export interface SucursalEndpoints {
     getAll: string;
     getById: string;
     getByCliente: string;
+    updatePhoto: string;
+    getSucursalEncargado: string;
 }
 
 export class SucursalService {
@@ -26,6 +29,8 @@ export class SucursalService {
             getAll: '/sucursales',
             getById: '/sucursales/:id',
             getByCliente: '/cliente/sucursales',
+            updatePhoto: '/sucursales/foto',
+            getSucursalEncargado: '/encargado_sucursal/sucursal',
             ...endpoints
         };
     }
@@ -41,5 +46,16 @@ export class SucursalService {
 
     async getByCliente(): Promise<SucursalApiResponse> {
         return this.api.get(this.endpoints.getByCliente);
+    }
+
+    async updateSucursalPhoto(file: File): Promise<{ mensaje: string; suc_url_foto: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return this.api.postFormData(this.endpoints.updatePhoto, formData);
+    }
+
+    async getSucursalEncargado(): Promise<SucursalApiResponse> {
+        return this.api.get(this.endpoints.getSucursalEncargado);
     }
 }

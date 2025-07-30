@@ -274,7 +274,7 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
                             </h2>
                             {/* INDICADOR del estado del producto */}
                             {isEditing && (
-                                <p className="text-sm text-[var(--violet-200)] mt-1">
+                                <p className="text-sm text-[var(--violet-100)] mt-1">
                                     Estado actual: <span className={producto?.pro_activo === 1 ? 'text-green-300' : 'text-red-300'}>
                                         {producto?.pro_activo === 1 ? 'Activo' : 'Inactivo'}
                                     </span>

@@ -59,18 +59,20 @@ export default function Product({ product, puntos, hasRestaurantSelected }: Prod
 
             {hasRestaurantSelected ? (
                 <div className="w-full flex flex-col items-center rounded-lg px-3 py-2 text-center text-[var(--white)] gap-2">
-                    <p
-                        className="text-xl font-extrabold leading-none"
-                        style={{ color: alcanza ? "var(--violet-200)" : "var(--rose)" }}
-                    >
-                        {puntos} / {pro_puntos_canje}
-                    </p>
+                    <div className="flex items-center gap-2">
+                        <p
+                            className="text-xl font-bold leading-none"
+                            style={{ color: alcanza ? "var(--violet-200)" : "var(--rose)" }}
+                        >
+                            {pro_puntos_canje} puntos
+                        </p>
+                    </div>
                     <p
                         className="text-md leading-none"
                         style={{ color: alcanza ? "var(--violet-200)" : "var(--rose)" }}
                     >
                         te {alcanza ? "sobran" : "faltan"}{" "}
-                        <span className="font-bold">{puntosRestantes} puntos</span> para
+                        <span className="font-semibold">{puntosRestantes} puntos</span> para
                         canjear este producto
                     </p>
                 </div>
