@@ -1,7 +1,7 @@
 import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: "primary" | "secondary" | "outline" | "danger" | "success" | "light" | "promocion" | "puntos" | "warning" | "link";
+    variant?: "primary" | "secondary" | "outline" | "danger" | "success" | "light" | "promocion" | "puntos" | "warning" | "link" | "glass" | "glass-danger";
     fullWidth?: boolean;
     rounded?: "sm" | "md" | "lg" | "xl" | "2xl" | "full";
     size?: "sm" | "md" | "lg";
@@ -28,6 +28,8 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
     warning:
         "bg-yellow-500 text-white border border-yellow-500 hover:bg-transparent hover:text-yellow-500",
     link: "bg-transparent text-[var(--violet)] border border-transparent hover:bg-transparent hover:text-[var(--violet-100)]",
+    glass: "bg-white/10 text-white border border-white/10 hover:bg-white/20 backdrop-blur-sm",
+    "glass-danger": "bg-red-500/20 text-white border border-red-300/20 hover:bg-red-500/30 backdrop-blur-sm",
 };
 
 const sizeClasses: Record<"sm" | "md" | "lg", string> = {
@@ -56,7 +58,7 @@ export default function Button({
     ...props
 }: ButtonProps) {
     const classes = `
-        transition-all duration-300 font-bold
+        transition-all duration-200 font-medium flex items-center justify-center gap-2
         ${variantClasses[variant]}
         ${sizeClasses[size]}
         ${roundedClasses[rounded]}

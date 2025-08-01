@@ -1,7 +1,7 @@
 // src/stores/useModalStore.ts
 import { create } from "zustand";
 
-type ModalType = "confirmDelete" | "addRest" | "cupon" | "codigoPromocional" | "confirmacion-cupon" | null;
+type ModalType = "confirmDelete" | "addRest" | "cupon" | "codigoPromocional" | "confirmacion-cupon" | "birthday-gift" | "cupon-puntos" | null;
 
 interface ModalState {
   modalType: ModalType;

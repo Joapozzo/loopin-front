@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CuponService } from "@/services/cupon.service";
-import { GenerarCodigoResponse, CodigoPromocional } from "@/types/codigos";
+import { GenerarCodigoResponse, CodigoPromocional, CuponCumpleanos } from "@/types/codigos";
 import { Product } from "@/types/product";
 
 // Instancia única del servicio
@@ -15,7 +15,8 @@ export const useCodigoGenerado = (
     suc_id?: number | null,
     enableCodigosPromocionales: boolean = false,
     // 🆕 NUEVO PARÁMETRO: controlar auto-generación
-    autoGenerate: boolean = false
+    autoGenerate: boolean = false,
+    enableCuponesCumpleanos: boolean = false
 ) => {
     const [codigoResponse, setCodigoResponse] = useState<GenerarCodigoResponse | null>(null);
     const queryClient = useQueryClient();
@@ -73,6 +74,30 @@ export const useCodigoGenerado = (
         refetchOnWindowFocus: false,
     });
 
+    // 🎂 Query para cupones de cumpleaños
+    const {
+        data: cuponesCumpleanos = [],
+        isLoading: loadingCumpleanos,
+        error: errorCumpleanos,
+        refetch: refetchCumpleanos
+    } = useQuery({
+        queryKey: ['cupones-cumpleanos-cliente'],
+        queryFn: async () => {
+            const result = await cuponService.getCuponesCumpleanosArray();
+            // Si es un objeto vacío {}, convertir a array vacío []
+            if (typeof result === 'object' && !Array.isArray(result)) {
+                return [];
+            }
+            return result;
+        },
+        enabled: enableCuponesCumpleanos,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        retry: 2,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+    });
+
     // Mutation para generar código
     const generarCodigoMutation = useMutation({
         mutationFn: async (producto: Product) => {
@@ -124,6 +149,11 @@ export const useCodigoGenerado = (
         await refetchPromocionales();
     }, [refetchPromocionales]);
 
+    // 🎂 Función para cargar cupones de cumpleaños
+    const cargarCuponesCumpleanos = useCallback(async () => {
+        await refetchCumpleanos();
+    }, [refetchCumpleanos]);
+
     // Función para generar código manualmente (cuando el usuario confirme)
     const generarCodigoManual = useCallback(async (producto: Product) => {
         if (!producto) return;
@@ -149,6 +179,8 @@ export const useCodigoGenerado = (
         queryClient.invalidateQueries({ queryKey: ['codigos', 'inactivos'] });
         // También invalidar códigos promocionales
         queryClient.invalidateQueries({ queryKey: ['codigos_promocionales'] });
+        // 🎂 También invalidar cupones de cumpleaños
+        queryClient.invalidateQueries({ queryKey: ['cupones-cumpleanos-cliente'] });
         // También invalidar tarjetas para asegurar que los puntos estén actualizados
         queryClient.invalidateQueries({ queryKey: ['tarjetas'] });
         // Limpiar código actual para próxima generación
@@ -177,7 +209,7 @@ export const useCodigoGenerado = (
         loading: generarCodigoMutation.isPending,
         error: generarCodigoMutation.error?.message || null,
         regenerarCodigo,
-        generarCodigoManual, // NUEVA FUNCIÓN MANUAL
+        generarCodigoManual,
 
         // Códigos del cliente (mantener nombres originales)
         codigosActivos,
@@ -194,5 +226,11 @@ export const useCodigoGenerado = (
         loadingPromocionales,
         errorPromocionales: errorPromocionales?.message || null,
         cargarCodigosPromocionales,
+
+        // 🎂 Cupones de cumpleaños
+        cuponesCumpleanos,
+        loadingCumpleanos,
+        errorCumpleanos: errorCumpleanos?.message || null,
+        cargarCuponesCumpleanos,
     };
 };

@@ -3,7 +3,7 @@ import { User, Mail, Phone, CreditCard, Calendar, MapPin } from 'lucide-react';
 import Input from './ui/inputs/Input'; 
 
 interface ConfiguracionPerfilCardProps {
-    data: {
+    data?: {
         usu_username: string;
         usu_mail: string;
         usu_cel: string;
@@ -44,14 +44,14 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                             <Input
                                 type="text"
                                 label="Nombre"
-                                defaultValue={data.cli_nom}
+                                defaultValue={data?.cli_nom}
                                 allowOnlyLetters
                             />
                         ) : (
                             <Input
                                 type="text"
                                 label="Nombre"
-                                value={data.cli_nom}
+                                value={data?.cli_nom}
                                 disabled
                                 readOnly
                             />
@@ -62,14 +62,14 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                             <Input
                                 type="text"
                                 label="Apellido"
-                                defaultValue={data.cli_ape}
+                                defaultValue={data?.cli_ape}
                                 allowOnlyLetters
                             />
                         ) : (
                             <Input
                                 type="text"
                                 label="Apellido"
-                                value={data.cli_ape}
+                                value={data?.cli_ape}
                                 disabled
                                 readOnly
                             />
@@ -84,14 +84,14 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                             type="text"
                             label="Usuario"
                             icon={<User />}
-                            defaultValue={data.usu_username}
+                            defaultValue={data?.usu_username}
                         />
                     ) : (
                         <Input
                             type="text"
                             label="Usuario"
                             icon={<User />}
-                            value={`@${data.usu_username}`}
+                            value={`@${data?.usu_username}`}
                             disabled
                             readOnly
                         />
@@ -105,14 +105,14 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                             type="email"
                             label="Email"
                             icon={<Mail />}
-                            defaultValue={data.usu_mail}
+                            defaultValue={data?.usu_mail}
                         />
                     ) : (
                         <Input
                             type="email"
                             label="Email"
                             icon={<Mail />}
-                            value={data.usu_mail}
+                            value={data?.usu_mail}
                             disabled
                             readOnly
                         />
@@ -127,7 +127,7 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                                 type="tel"
                                 label="Teléfono"
                                 icon={<Phone />}
-                                defaultValue={data.usu_cel}
+                                defaultValue={data?.usu_cel}
                                 allowOnlyNumbers
                             />
                         ) : (
@@ -135,7 +135,7 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                                 type="tel"
                                 label="Teléfono"
                                 icon={<Phone />}
-                                value={data.usu_cel}
+                                value={data?.usu_cel}
                                 disabled
                                 readOnly
                             />
@@ -147,7 +147,7 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                                 type="text"
                                 label="DNI"
                                 icon={<CreditCard />}
-                                defaultValue={data.usu_dni}
+                                defaultValue={data?.usu_dni}
                                 allowOnlyNumbers
                             />
                         ) : (
@@ -155,7 +155,7 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                                 type="text"
                                 label="DNI"
                                 icon={<CreditCard />}
-                                value={data.usu_dni}
+                                value={data?.usu_dni}
                                 disabled
                                 readOnly
                             />
@@ -170,14 +170,14 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                             type="date"
                             label="Fecha de Nacimiento"
                             icon={<Calendar />}
-                            defaultValue={data.cli_fec_nac || ''}
+                            defaultValue={data?.cli_fec_nac || ''}
                         />
                     ) : (
                         <Input
                             type="text"
                             label="Fecha de Nacimiento"
                             icon={<Calendar />}
-                            value={data.cli_fec_nac || 'No especificada'}
+                            value={data?.cli_fec_nac || 'No especificada'}
                             disabled
                             readOnly
                         />
@@ -191,14 +191,14 @@ export const ConfiguracionPerfilCard: React.FC<ConfiguracionPerfilCardProps> = (
                             type="text"
                             label="Localidad"
                             icon={<MapPin />}
-                            defaultValue={data.loc_nom}
+                            defaultValue={data?.loc_nom}
                         />
                     ) : (
                         <Input
                             type="text"
                             label="Localidad"
                             icon={<MapPin />}
-                            value={data.loc_nom}
+                            value={data?.loc_nom}
                             disabled
                             readOnly
                         />

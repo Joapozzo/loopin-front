@@ -18,6 +18,7 @@ import { Product } from '@/types/product';
 import { useProductos } from '@/hooks/useProductos';
 import { useToast } from '@/hooks/useToast';
 import { Toaster } from 'react-hot-toast';
+import { logger } from '@/utils/logger';
 
 type CuponModalState = 'none' | 'step1' | 'step2-productos' | 'step3-promocion' | 'step2-puntos';
 
@@ -264,7 +265,7 @@ export const CuponTable: React.FC<CuponTableProps> = ({
     const handleConfirmDelete = async () => {
         if (selectedCupon) {
             try {
-                console.log('Eliminar cupón:', selectedCupon);
+                logger.log('Eliminar cupón:', selectedCupon);
                 showToast('Función de eliminación en desarrollo', 'info');
                 await refreshAll();
                 setSelectedCupon(null);

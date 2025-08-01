@@ -1,9 +1,7 @@
 "use client";
-import { ClienteCompleto } from "@/types/clienteCompleto";
-import { useAuth } from "@/hooks/useAuth"; // 🆕 Usar el AuthContext
+import { useAuth } from "@/hooks/useAuth";
 
 export const useUserProfile = () => {
-    // 🆕 Obtener datos directamente del AuthContext
     const { 
         userProfile, 
         isLoading: authLoading, 
@@ -64,7 +62,6 @@ export const useUserProfile = () => {
         isLoading,
         error,
 
-        // ✅ Objetos completos si los necesitas
         userData, // Solo los datos del usuario
         clienteData: getClienteData(), // Solo los datos del cliente
         fullProfile: userProfile, // El perfil completo como viene de la API

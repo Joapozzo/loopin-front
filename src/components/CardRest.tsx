@@ -30,6 +30,9 @@ export default function CardRest({ restaurant, selected }: CardRestProps) {
         return src.startsWith("/") || src.startsWith("http");
     };
 
+    console.log(suc_url_foto);
+    
+
     return (
         <Link href={createRestaurantUrl(suc_nom)}
             className="flex items-center gap-4 justify-between bg-[var(--violet-50)] rounded-lg px-5 py-6 w-full hover:scale-105 transition-all duration-300 ease-in-out hover:bg-[var(--violet-100)] mt-6"

@@ -1,9 +1,20 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/AuthContext";
 import Providers from "./provider";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+
+// Configuración del viewport para PWA
+export const viewport: Viewport = {
+  themeColor: "#7b61ff",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Loopin - Plataforma de Fidelización para Comercios | Sistema de Puntos",
@@ -68,13 +79,42 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  icons: {
-    icon: "/favicon.ico"
+  // PWA Configuration
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Loopin",
+    startupImage: [
+      {
+        url: "/icons/icon-512x512.png",
+        media: "(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)",
+      },
+    ],
   },
-  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icons/icon-192x192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icons/icon-512x512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" },
+      { url: "/icons/icon-180x180.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+  },
   other: {
     "msapplication-TileColor": "#7b61ff",
-    "theme-color": "#7b61ff",
+    "msapplication-config": "/browserconfig.xml",
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "apple-mobile-web-app-title": "Loopin",
+    "application-name": "Loopin",
+    "msapplication-tooltip": "Loopin - Sistema de Fidelización",
+    "msapplication-starturl": "/",
+    "msapplication-tap-highlight": "no",
   },
 };
 
@@ -96,7 +136,40 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
+      <head>
+        {/* Preload critical resources */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+        
+        {/* DNS prefetch for better performance */}
+        <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
+        
+        {/* Additional PWA meta tags */}
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="HandheldFriendly" content="true" />
+        <meta name="MobileOptimized" content="320" />
+        
+        {/* iOS specific meta tags */}
+        <meta name="apple-touch-fullscreen" content="yes" />
+        <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+        
+        {/* Splash screens for iOS */}
+        <link
+          rel="apple-touch-startup-image"
+          href="/icons/icon-512x512.png"
+          media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)"
+        />
+        
+        {/* Windows specific */}
+        <meta name="msapplication-navbutton-color" content="#7b61ff" />
+        <meta name="msapplication-square70x70logo" content="/icons/icon-72x72.png" />
+        <meta name="msapplication-square150x150logo" content="/icons/icon-152x152.png" />
+        <meta name="msapplication-square310x310logo" content="/icons/icon-512x512.png" />
+      </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased font-sans`}
       >
@@ -109,8 +182,28 @@ export default function RootLayout({
               }}
             />
             {children}
+            <PWAInstallPrompt/>
           </AuthProvider>
         </Providers>
+        
+        {/* Registro del Service Worker */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator && typeof window !== 'undefined') {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('✅ PWA: Service Worker registrado exitosamente');
+                    })
+                    .catch(function(error) {
+                      console.log('❌ PWA: Error al registrar Service Worker:', error);
+                    });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

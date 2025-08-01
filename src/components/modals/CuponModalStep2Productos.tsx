@@ -166,7 +166,7 @@ export const CuponModalStep2Productos: React.FC<CuponModalStep2ProductosProps> =
                 </div>
 
                 {/* Footer */}
-                <div className={`flex justify-between items-center py-6 border-t border-[var(--violet-300)] transition-all duration-500 delay-500 ${isMounted && !effectiveIsClosing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+                <div className={`flex justify-between items-center pt-6 border-t border-[var(--violet-300)] transition-all duration-500 delay-500 ${isMounted && !effectiveIsClosing ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
                     <Button
                         variant="outline"
                         onClick={onBack}

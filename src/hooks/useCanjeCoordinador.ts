@@ -34,10 +34,10 @@
 //         setIsValidating(true);
 
 //         try {
-//             console.log('🔍 Iniciando validación de datos de canje...', datos);
+//             logger.log('🔍 Iniciando validación de datos de canje...', datos);
 
 //             // Validar DNI
-//             console.log('📋 Validando DNI...');
+//             logger.log('📋 Validando DNI...');
 //             const validacionDni: ValidacionDni = await validarDni(datos.dni_cliente);
 
 //             if (!validacionDni.dni_valido) {
@@ -54,7 +54,7 @@
 //             }
 
 //             // Validar código
-//             console.log('🎫 Validando código...');
+//             logger.log('🎫 Validando código...');
 //             const validacionCodigo: ValidacionCodigo = await validarCodigo(datos.codigo);
 
 //             if (!validacionCodigo.codigo_valido) {
@@ -91,7 +91,7 @@
 //             };
 
 //             setValidacionActual(resultado);
-//             console.log('✅ Validación completa:', resultado);
+//             logger.log('✅ Validación completa:', resultado);
 
 //             return resultado;
 
@@ -127,7 +127,7 @@
 //         setIsConfirming(true);
 
 //         try {
-//             console.log('💫 Confirmando canje...', confirmacion);
+//             logger.log('💫 Confirmando canje...', confirmacion);
 
 //             const resultado = await realizarCanje({
 //                 usu_dni: confirmacion.usu_dni,
@@ -139,7 +139,7 @@
 //                 throw new Error(resultado.mensaje || 'El canje no pudo completarse');
 //             }
 
-//             console.log('✅ Canje realizado exitosamente:', resultado);
+//             logger.log('✅ Canje realizado exitosamente:', resultado);
 
 //             // Limpiar validación actual después del canje exitoso
 //             setValidacionActual(null);

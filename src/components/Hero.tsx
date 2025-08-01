@@ -11,15 +11,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from 'next/navigation';
 import GradientCard from './GradientCard';
-import { useAuth } from '@/hooks/useAuth';
-import { getMarcasParaSlider } from '@/data/marcasSlider';
+import { useSucursalesSlider } from '@/data/marcasSlider';
 import { MarcaSliderItem } from './MarcaSliderItem';
 import { useUserProfile } from '@/hooks/userProfile';
-import { useSucursalesCliente } from '@/hooks/useSucursales';
+import { useSucursales, useSucursalesCliente } from '@/hooks/useSucursales';
 import { useTarjetas } from '@/hooks/useTarjetas';
 import { useRestauranteSeleccionadoStore } from '@/stores/useRestaurantSeleccionado';
 import PuntosCounter from './PuntosCounter';
 import { useQueryClient } from '@tanstack/react-query';
+import { useModalStore } from '@/stores/useModalStore';
+import { Sucursal } from '@/types/sucursal';
+
 
 // Configuración unificada de animaciones
 const ANIMATION_CONFIG = {
@@ -44,7 +46,6 @@ const SkeletonBox = ({ className = "", rounded = "rounded-lg" }) => (
 );
 
 export default function Hero() {
-    const { logout } = useAuth();
     const router = useRouter();
     const queryClient = useQueryClient();
 
@@ -72,6 +73,10 @@ export default function Hero() {
     } = useSucursalesCliente();
 
     const {
+        sucursales: sucursalesTotales,
+    } = useSucursales();
+
+    const {
         getTarjetaBySucursal,
         loading: tarjetasLoading,
         error: tarjetasError,
@@ -83,8 +88,9 @@ export default function Hero() {
 
     const restauranteSeleccionado = useRestauranteSeleccionadoStore(s => s.restauranteSeleccionado);
     const setRestauranteSeleccionado = useRestauranteSeleccionadoStore(s => s.setRestauranteSeleccionado);
+    const openBirthdayModal = useModalStore(state => state.openModal);
 
-    const [marcasSlider, setMarcasSlider] = useState(getMarcasParaSlider());
+    const sucursalesSlider: Sucursal[] = useSucursalesSlider(sucursalesTotales, 15000);
 
     const tarjetaActual = useMemo(() => {
         const tarjeta = restauranteSeleccionado
@@ -102,8 +108,8 @@ export default function Hero() {
                 }, 300);
             }
 
-            // 2. Cargar marcas (600ms)
-            if (marcasSlider.length > 0) {
+            // 2. Cargar marcas (600ms) - CAMBIAR ESTA CONDICIÓN
+            if (sucursalesSlider.length > 0) {
                 setTimeout(() => {
                     setLoadedSections(prev => ({ ...prev, brands: true }));
                 }, 600);
@@ -111,7 +117,7 @@ export default function Hero() {
         };
 
         loadProgressively();
-    }, [cliente, clienteLoading, clienteError, marcasSlider]);
+    }, [cliente, clienteLoading, clienteError, sucursalesSlider]);
 
     useEffect(() => {
         if (sucursales.length > 0 && !sucursalesLoading && !sucursalesError) {
@@ -139,14 +145,6 @@ export default function Hero() {
             }));
         }
     }, [restauranteSeleccionado, tarjetaActual, tarjetasLoading]);
-
-    // Rotación de marcas
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setMarcasSlider(getMarcasParaSlider());
-        }, 15000);
-        return () => clearInterval(interval);
-    }, []);
 
     useEffect(() => {
         if (restauranteSeleccionado) {
@@ -186,6 +184,10 @@ export default function Hero() {
 
     // Funciones de navegación
     const goToCredencials = () => router.push('perfil/credenciales');
+
+    const handleGiftClick = () => {
+        openBirthdayModal("birthday-gift");
+    };
 
     const hasCriticalError = clienteError || !cliente;
 
@@ -271,8 +273,8 @@ export default function Hero() {
                             <span className="flex items-center justify-center gap-2">
                                 {loadedSections.userData ? (
                                     <>
-                                        <Icon name="ticket" onClick={goToCredencials} backgroundColor='var(--violet-200)' />
-                                        <Icon name="logout" onClick={logout} backgroundColor='var(--rose)' />
+                                        <Icon name="idcard" onClick={goToCredencials} backgroundColor='var(--violet-200)' />
+                                        <Icon name="gift" onClick={handleGiftClick} backgroundColor='var(--rose)' />
                                     </>
                                 ) : (
                                     <>
@@ -299,10 +301,10 @@ export default function Hero() {
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 0.5 }}
                                     >
-                                        {marcasSlider.map((marca, i) => (
+                                        {sucursalesSlider.map((sucursal, i) => (
                                             <MarcaSliderItem
-                                                key={`${marca.id}-${i}`}
-                                                marca={marca}
+                                                key={`${sucursal.suc_id}-${i}`}
+                                                marca={sucursal}
                                             />
                                         ))}
                                     </motion.div>
@@ -384,9 +386,9 @@ export default function Hero() {
                                             animate={{ opacity: 1 }}
                                             transition={{ duration: 0.5 }}
                                         >
-                                            {marcasSlider.map((marca, i) => (
+                                            {sucursalesSlider.map((sucursal, i) => (
                                                 <motion.div
-                                                    key={`${marca.id}-${i}`}
+                                                    key={`${sucursal.suc_id}-${i}`}
                                                     className="w-40 flex-shrink-0 px-4"
                                                     whileHover={{
                                                         scale: 1.02,
@@ -395,14 +397,14 @@ export default function Hero() {
                                                 >
                                                     <div className="bg-white rounded-xl p-4 flex items-center justify-center shadow-sm border border-gray-100 hover:shadow-md hover:border-[var(--violet-200)] transition-all duration-200">
                                                         <img
-                                                            src={marca.logo}
-                                                            alt={marca.nombre}
+                                                            src={sucursal.suc_url_foto}
+                                                            alt={sucursal.suc_nom}
                                                             className="w-full h-8 object-contain opacity-80"
-                                                            title={marca.nombre}
+                                                            title={sucursal.suc_nom}
                                                         />
                                                     </div>
                                                     <p className="text-gray-600 text-xs text-center mt-2 truncate">
-                                                        {marca.nombre}
+                                                        {sucursal.suc_nom}
                                                     </p>
                                                 </motion.div>
                                             ))}
@@ -411,7 +413,7 @@ export default function Hero() {
 
                                     <div className="mt-4 text-center">
                                         <p className="text-gray-600 text-sm">
-                                            {Math.floor(marcasSlider.length / 3)} marcas disponibles
+                                            {Math.floor(sucursalesSlider.length / 2)} comercios disponibles
                                         </p>
                                     </div>
                                 </>

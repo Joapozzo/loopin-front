@@ -1,11 +1,7 @@
 "use client";
 
 import { CodigoCliente } from "@/types/codigos";
-import { useProductos } from "@/hooks/useProductos";
-import { useSucursales } from "@/hooks/useSucursales";
 import { Hand, Package, MapPin } from "lucide-react";
-import { useMemo } from "react";
-import SpinnerLoader from "./ui/SpinerLoader";
 
 interface CuponCardProps {
     codigo: CodigoCliente;
@@ -14,33 +10,10 @@ interface CuponCardProps {
 }
 
 export default function CuponCard({ codigo, onClick, tipo }: CuponCardProps) {
-    const { getProductoById, tableConfig } = useProductos({
-        mode: "general",
-        enabled: true,
-    });
-
-    const { getSucursalById } = useSucursales({ enabled: true });
-
-    const producto = useMemo(() => {
-        return getProductoById(Number(codigo.pro_id));
-    }, [getProductoById, codigo.pro_id]);
-
-    const sucursal = useMemo(() => {
-        return getSucursalById(codigo.suc_id, codigo.neg_id);
-    }, [getSucursalById, codigo.suc_id]);
 
     const handleClick = () => {
         onClick?.(codigo);
     };
-
-    if (tableConfig.loading) {
-        return (
-            <article className="flex-1 flex flex-col items-center justify-center h-44 min-w-[200px] text-[var(--white)] bg-[var(--violet-200)] p-4 rounded-lg animate-pulse">
-                <SpinnerLoader />
-                <p className="mt-2 text-sm text-[var(--violet)]">Cargando...</p>
-            </article>
-        );
-    }
 
     // Estilos condicionales para cupones inactivos
     const isInactive = tipo === "inactivos";
@@ -72,14 +45,12 @@ export default function CuponCard({ codigo, onClick, tipo }: CuponCardProps) {
 
                 <div className="flex flex-col gap-1">
                     <h4 className="text-lg font-bold leading-tight">
-                        {producto?.pro_nom || `Producto #${codigo.pro_id}`}
+                        {codigo?.pro_nom}
                     </h4>
+                    <p className={`text-sm ${accentText}`}>
+                        {codigo.pro_puntos_canje} puntos de canje
+                    </p>
 
-                    {producto && (
-                        <p className={`text-sm ${accentText}`}>
-                            {producto.pro_puntos_canje} puntos de canje
-                        </p>
-                    )}
                 </div>
 
                 {/* Código del cupón */}
@@ -97,7 +68,7 @@ export default function CuponCard({ codigo, onClick, tipo }: CuponCardProps) {
             <div className="flex items-center gap-1 w-full mt-2">
                 <MapPin size={14} className={iconColor} />
                 <span className={`text-sm ${accentText} truncate`}>
-                    {sucursal ? sucursal.suc_nom : `Sucursal #${codigo.suc_id}`}
+                    {codigo.suc_nom}
                 </span>
             </div>
         </article>

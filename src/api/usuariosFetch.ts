@@ -125,3 +125,31 @@ export const validateUser = async (token: string) => {
         };
     }
 };
+
+export const countLogin = async (token: string) => {
+    try {
+        const res = await fetch(`${URI_API}/usuarios/login`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const result = await res.json();
+
+        return {
+            status: res.status,
+            ok: res.ok,
+            data: result
+        };
+
+    } catch (error: any) {
+        console.error("Error al validar perfil:", error);
+        return {
+            status: 500,
+            ok: false,
+            data: { error: error.message }
+        };
+    }
+};

@@ -172,6 +172,9 @@ export interface CodigoCliente {
     pro_id: number;
     neg_id: number;
     suc_id: number;
+    pro_nom: string;
+    pro_puntos_canje: string;
+    suc_nom: string;
 }
 
 export interface CodigoPromocional {
@@ -182,6 +185,7 @@ export interface CodigoPromocional {
     cod_prom_uso_max: number;
     pro_nom: string;
     est_cod_nom: string;
+    pro_url_foto: string;
 }
 
 export interface CodigoPuntos {
@@ -192,6 +196,21 @@ export interface CodigoPuntos {
     cod_pun_uso_max: number;
     cod_pun_cant: number;
     est_cod_nom: string;
+}
+
+export interface CuponCumpleanos {
+    cod_prom_publico: string;
+    cod_prom_fecha_emision: string;
+    cod_prom_fecha_expiracion: string;
+    cod_prom_uso_max: number;
+    pro_nom: string;
+    pro_url_foto: string;
+    suc_nom: string;
+}
+
+export interface ApiResponseCumpleanos {
+    cupones_cumpleaños: CuponCumpleanos[];
+    mensaje: string;
 }
 
 export interface ApiResponsePromocional {
@@ -220,6 +239,7 @@ export interface CuponView {
     producto_nombre?: string;
     // Campos específicos de puntos
     cantidad_puntos?: number;
+    esCumpleanos?: boolean;
 }
 
 export interface UseCuponesConfig {

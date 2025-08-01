@@ -1,14 +1,10 @@
 import React from 'react';
 import { Store, MapPin, Palette, Coins } from 'lucide-react';
-import Input from './ui/inputs/Input'; 
+import Input from './ui/inputs/Input';
+import { Sucursal } from '@/types/sucursal';
 
 interface ConfiguracionInfoCardProps {
-    data: {
-        suc_nom: string;
-        suc_dir: string;
-        suc_relacion_puntos: string;
-        suc_color: string;
-    };
+    data: Sucursal;
     isEditing: boolean;
 }
 
@@ -124,7 +120,7 @@ export const ConfiguracionInfoCard: React.FC<ConfiguracionInfoCardProps> = ({
                                 Color del Tema
                             </label>
                             <div className="flex items-center space-x-3">
-                                <div 
+                                <div
                                     className="w-12 h-11 rounded border border-gray-300"
                                     style={{ backgroundColor: data.suc_color }}
                                 ></div>

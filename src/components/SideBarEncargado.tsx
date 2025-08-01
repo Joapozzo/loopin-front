@@ -9,10 +9,8 @@ import {
     Settings,
     LogOut,
     ChefHat,
-    BarChart3,
     ChevronLeft,
     ChevronRight,
-    Star,
     MapPin,
     Ticket,
     Plus,
@@ -26,11 +24,9 @@ import { useClientes } from '@/hooks/useClientes';
 import { useProductos } from '@/hooks/useProductos';
 import { useUserProfile } from '@/hooks/userProfile';
 import { useComercioData, useComercioEncargado } from '@/hooks/useComercioEncargado';
-// import { useCupones } from '@/hooks/useCupones';
 import { useVentas } from '@/hooks/useVentas';
 import { useCanjes } from '@/hooks/useCanjes';
 import Image from 'next/image';
-import { getCleanUrl } from '@/data/utils';
 
 const ManagerSidebar = () => {
     const router = useRouter();
@@ -41,8 +37,6 @@ const ManagerSidebar = () => {
     const { loading: comercioLoading } = useComercioEncargado();
     const { comercioData, loading: comercioDataLoading } = useComercioData();
     const { isExpanded, toggleSidebar } = useSidebar();
-
-    const isLoadingData = profileLoading || comercioLoading || comercioDataLoading;
 
     // Función para obtener el item activo basado en la ruta
     const getActiveItemFromPath = (path: string) => {
@@ -158,12 +152,15 @@ const ManagerSidebar = () => {
                     <>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-2xl shadow-md backdrop-blur-sm flex-shrink-0">
-                                <Image
-                                    src={managerData.restaurant.logo ? getCleanUrl(managerData.restaurant.logo) : ''}
-                                    alt={managerData.restaurant.name}
-                                    width={64}
-                                    height={64}
-                                />
+                                {
+                                    managerData.restaurant.logo &&
+                                    <Image
+                                        src={managerData.restaurant.logo}
+                                        alt={managerData.restaurant.name}
+                                        width={64}
+                                        height={64}
+                                    />
+                                }
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-white/80 text-sm">Panel de</p>
@@ -220,12 +217,15 @@ const ManagerSidebar = () => {
                 ) : (
                     <div className="flex flex-col items-center space-y-3">
                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-md backdrop-blur-sm">
-                            <Image
-                                src={managerData.restaurant.logo ? getCleanUrl(managerData.restaurant.logo) : ''}
-                                alt={managerData.restaurant.name}
-                                width={64}
-                                height={64}
-                            />
+                            {
+                                managerData.restaurant.logo &&
+                                <Image
+                                    src={managerData.restaurant.logo}
+                                    alt={managerData.restaurant.name}
+                                    width={64}
+                                    height={64}
+                                />
+                            }
                         </div>
                         <button
                             onClick={toggleSidebar}
@@ -277,6 +277,7 @@ const ManagerSidebar = () => {
                     ))}
                 </ul>
             </nav>
+            
         </aside>
     );
 };

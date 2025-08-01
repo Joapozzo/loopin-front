@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Home, User, Compass, Store, Ticket, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { Home, User, Compass, Store, LogOut, ChevronLeft, ChevronRight, Gift, IdCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useRestaurantStore } from "@/stores/useRestaurantStore";
@@ -11,25 +11,25 @@ import { useUserSidebar } from "@/context/UserSideBarContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/userProfile";
 import { useSucursales, useSucursalesCliente } from "@/hooks/useSucursales";
-import toast from "react-hot-toast";
-
+import CuponPuntosComponent from "./CuponPuntosComponent";
+import Button from "./ui/buttons/Button";
+import { useModalStore } from "@/stores/useModalStore";
 
 export default function Sidebar() {
     const { logout } = useAuth();
+    const pathname = usePathname();
+    const router = useRouter();
 
     const { nombreCompleto } = useUserProfile();
     const { isExpanded, toggleSidebar } = useUserSidebar();
     const { totalSucursales: totalSucursalesCliente } = useSucursalesCliente();
     const { totalSucursales } = useSucursales();
 
-
-    const pathname = usePathname();
-    const router = useRouter();
-
     const restaurantSelected = useRestaurantStore((state) => state.idRestaurantSelected);
     const tarjetas = useTarjetaStore((s) => s.tarjetas);
 
     const tarjeta = tarjetas?.find((t) => t?.suc_id === restaurantSelected?.suc_id);
+    const openModal = useModalStore((state) => state.openModal);
 
     const [points, setPoints] = useState(0);
 
@@ -56,6 +56,10 @@ export default function Sidebar() {
 
     const goToCredencials = () => {
         router.push('perfil/credenciales');
+    };
+
+    const handleOpenCuponModal = () => {
+        openModal("birthday-gift");
     };
 
     const navItems = [
@@ -90,9 +94,14 @@ export default function Sidebar() {
     ];
 
     return (
-        <aside className={`${isExpanded ? 'w-80' : 'w-20'} fixed top-0 left-0 h-screen bg-[var(--violet)] border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300`}>
+        <aside
+            className={`${isExpanded ? "w-80" : "w-20"
+                } fixed top-0 left-0 h-screen bg-[var(--violet)] border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300`}
+        >
             {/* Header del perfil */}
-            <div className={`${isExpanded ? 'p-6' : 'p-3'} border-b border-white/20`}>
+            <div
+                className={`${isExpanded ? "p-6" : "p-3"} border-b border-white/20`}
+            >
                 {isExpanded ? (
                     // Vista expandida
                     <>
@@ -117,21 +126,29 @@ export default function Sidebar() {
                         </div>
 
                         {/* Acciones rápidas */}
-                        <div className="flex gap-2">
-                            <button
-                                onClick={goToCredencials}
-                                className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-white text-sm hover:bg-white/20 transition-all duration-200 backdrop-blur-sm border border-white/10"
-                            >
-                                <Ticket size={16} />
-                                Credenciales
-                            </button>
-                            <button
-                                onClick={logout}
-                                className="flex items-center gap-2 px-3 py-2 bg-red-500/20 rounded-lg text-white text-sm hover:bg-red-500/30 transition-all duration-200 backdrop-blur-sm border border-red-300/20"
-                            >
+                        <div className="flex gap-2 flex-col w-full">
+                            <div className="flex gap-2 w-full mx-auto">
+                                <Button
+                                    variant="glass"
+                                    onClick={handleOpenCuponModal}
+                                    className="w-1/4"
+                                >
+                                    <Gift size={22} />
+                                </Button>
+                                <Button
+                                    variant="glass"
+                                    onClick={goToCredencials}
+                                    className="w-3/4"
+                                >
+                                    <IdCard size={22} />
+                                    Credenciales
+                                </Button>
+                            </div>
+
+                            <Button variant="glass-danger" onClick={logout}>
                                 <LogOut size={16} />
                                 Salir
-                            </button>
+                            </Button>
                         </div>
                     </>
                 ) : (
@@ -154,7 +171,7 @@ export default function Sidebar() {
             </div>
 
             {/* Navegación principal */}
-            <nav className={`flex-1 ${isExpanded ? 'p-6' : 'p-3'}`}>
+            <nav className={`flex-1 ${isExpanded ? "p-6" : "p-3"}`}>
                 {isExpanded && (
                     <h2 className="text-white/70 text-xs uppercase tracking-wider font-semibold mb-4">
                         Navegación
@@ -167,14 +184,17 @@ export default function Sidebar() {
                             <li key={item.href}>
                                 <Link
                                     href={item.href}
-                                    className={`flex items-center ${isExpanded ? 'gap-3 px-4' : 'justify-center px-2'} py-3 rounded-xl transition-all duration-200 group relative ${isActive
-                                        ? "bg-white text-[var(--violet)] shadow-lg"
-                                        : "text-white/80 hover:bg-white/10 hover:text-white"
+                                    className={`flex items-center ${isExpanded ? "gap-3 px-4" : "justify-center px-2"
+                                        } py-3 rounded-xl transition-all duration-200 group relative ${isActive
+                                            ? "bg-white text-[var(--violet)] shadow-lg"
+                                            : "text-white/80 hover:bg-white/10 hover:text-white"
                                         }`}
                                     title={!isExpanded ? item.label : undefined}
                                 >
-                                    <span className={`transition-all duration-200 ${isActive ? "scale-110" : "group-hover:scale-105"
-                                        }`}>
+                                    <span
+                                        className={`transition-all duration-200 ${isActive ? "scale-110" : "group-hover:scale-105"
+                                            }`}
+                                    >
                                         {item.icon}
                                     </span>
 
@@ -182,15 +202,21 @@ export default function Sidebar() {
                                         <>
                                             <div className="flex-1">
                                                 <div className="font-medium">{item.label}</div>
-                                                <div className={`text-xs ${isActive ? "text-[var(--violet)]/70" : "text-white/60"
-                                                    }`}>
+                                                <div
+                                                    className={`text-xs ${isActive
+                                                        ? "text-[var(--violet)]/70"
+                                                        : "text-white/60"
+                                                        }`}
+                                                >
                                                     {item.description}
                                                 </div>
                                             </div>
 
                                             {item.badge && item.badge > 0 && (
-                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${item.badgeColor || "bg-white/20"
-                                                    } ${isActive ? "text-white" : "text-white"}`}>
+                                                <span
+                                                    className={`px-2 py-1 text-xs font-semibold rounded-full ${item.badgeColor || "bg-white/20"
+                                                        } ${isActive ? "text-white" : "text-white"}`}
+                                                >
                                                     {item.badge}
                                                 </span>
                                             )}
@@ -199,18 +225,21 @@ export default function Sidebar() {
                                                 <motion.div
                                                     className="ml-2 w-2 h-2 bg-[var(--violet)] rounded-full"
                                                     layoutId="activeIndicator"
-                                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                    transition={{
+                                                        type: "spring",
+                                                        stiffness: 300,
+                                                        damping: 30,
+                                                    }}
                                                 />
                                             )}
                                         </>
                                     )}
-
-
                                 </Link>
                             </li>
                         );
                     })}
                 </ul>
+                {/* <CuponPuntosComponent /> */}
             </nav>
 
             {/* Footer */}
@@ -222,9 +251,7 @@ export default function Sidebar() {
                             alt="Logo"
                             className="w-20 h-8 mx-auto opacity-70 hover:opacity-90 transition-opacity duration-200"
                         />
-                        <p className="text-white/60 text-xs mt-2">
-                            © 2025 Loopin
-                        </p>
+                        <p className="text-white/60 text-xs mt-2">© 2025 Loopin</p>
                     </div>
                 </div>
             )}

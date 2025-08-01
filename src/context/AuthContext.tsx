@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, ReactNode } from "react";
+import { createContext, useContext, useEffect, ReactNode, useRef, useCallback } from "react";
 import { auth, googleProvider } from "@/auth/firebase";
 import {
     onAuthStateChanged,
@@ -9,7 +9,7 @@ import {
     signInWithPopup,
     sendEmailVerification
 } from "firebase/auth";
-import { getUserProfile, validateUser } from "@/api/usuariosFetch";
+import { countLogin, getUserProfile, validateUser } from "@/api/usuariosFetch";
 import toast from "react-hot-toast";
 import { logger } from "@/utils/logger";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -44,67 +44,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const URI_API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-    // ============================================================================
-    // FUNCIONES DE VALIDACIÓN
-    // ============================================================================
+    // 🆕 CACHÉ PERSISTENTE USANDO useRef (NO SE RECREA EN CADA RENDER)
+    const validationCacheRef = useRef(new Map<string, {
+        result: any;
+        timestamp: number;
+        expiry: number;
+    }>());
 
-    /**
-     * Validar si el usuario existe en nuestra base de datos usando /usuarios/ver_perfil
-     */
-    const validateUserInDB = async (token: string) => {
-        try {
-            logger.log("🔍 Validando usuario en BD con /usuarios/validate...");
+    // 🆕 FLAG PARA EVITAR PROCESAMIENTO MÚLTIPLE
+    const processingUsersRef = useRef(new Set<string>());
 
-            const response = await validateUser(token);
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
-            logger.log("📥 Respuesta de validateUser:", {
-                status: response.status,
-                ok: response.ok,
-                data: response.data
-            });
-
-            if (response.ok) {
-                const data = response.data;
-
-                // 🔍 Verificar si el usuario existe
-                if (data === true || (typeof data === 'object' && data.exists === true)) {
-                    logger.log("✅ Usuario existe en BD - AHORA VALIDAR ROLES");
-
-                    // 🎯 VALIDAR ROLES con los endpoints correctos
-                    const roleValidation = await validateUserRole(token);
-
-                    if (roleValidation) {
-                        logger.log(`✅ Rol validado correctamente: ${roleValidation}`);
-
-                        // Obtener perfil completo
-                        const profileResponse = await getUserProfile(token);
-                        const profile = profileResponse.ok ? profileResponse.data : null;
-
-                        return { exists: true, role: roleValidation, profile };
-                    } else {
-                        logger.log("❌ Error validando rol del usuario");
-                        return { exists: false, role: null, profile: null };
-                    }
-
-                } else {
-                    logger.log("❌ Usuario no existe en BD - NECESITA ONBOARDING");
-                    return { exists: false, role: null, profile: null };
-                }
-
-            } else {
-                logger.log("❌ Error en API validate - NECESITA ONBOARDING");
-                return { exists: false, role: null, profile: null };
-            }
-        } catch (error) {
-            logger.error("❌ Error validando usuario:", error);
-            return { exists: false, role: null, profile: null };
+    // 🆕 MÉTODOS PARA MANEJAR CACHÉ (MEMOIZADOS)
+    const getCachedValidation = useCallback((key: string) => {
+        const cached = validationCacheRef.current.get(key);
+        if (cached && Date.now() < cached.timestamp + cached.expiry) {
+            logger.log(`📦 Usando caché para: ${key}`);
+            return cached.result;
         }
-    };
+        return null;
+    }, []);
+
+    const setCachedValidation = useCallback((key: string, result: any) => {
+        validationCacheRef.current.set(key, {
+            result,
+            timestamp: Date.now(),
+            expiry: CACHE_DURATION
+        });
+    }, []);
+
+    // ============================================================================
+    // FUNCIONES DE VALIDACIÓN (CON CACHÉ PERSISTENTE)
+    // ============================================================================
 
     /**
-     * Validar rol específico del usuario usando los endpoints correctos
+     * Validar rol específico del usuario usando los endpoints correctos (CON CACHÉ)
      */
-    const validateUserRole = async (token: string): Promise<"cliente" | "encargado" | null> => {
+    const validateUserRole = useCallback(async (token: string): Promise<"cliente" | "encargado" | null> => {
+        const cacheKey = `validate_role_${token.slice(-10)}`;
+
+        // 🔍 Verificar caché primero
+        const cached = getCachedValidation(cacheKey);
+        if (cached !== null) {
+            return cached;
+        }
+
         try {
             logger.log("🔍 Validando rol del usuario...");
 
@@ -121,6 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const clienteData = await clienteResponse.json();
             if (clienteData) {
                 logger.log("✅ CLIENTE validado exitosamente:", clienteData);
+                setCachedValidation(cacheKey, "cliente");
                 return "cliente";
             }
 
@@ -138,22 +124,103 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const encargadoData = await encargadoResponse.json();
             if (encargadoData) {
                 logger.log("✅ ENCARGADO validado exitosamente:", encargadoData);
+                setCachedValidation(cacheKey, "encargado");
                 return "encargado";
             }
 
             logger.log("❌ Usuario no es ni cliente ni encargado");
+            setCachedValidation(cacheKey, null);
             return null;
 
         } catch (error) {
             logger.error("❌ Error validando rol:", error);
+            setCachedValidation(cacheKey, null);
             return null;
         }
-    };
+    }, [URI_API, getCachedValidation, setCachedValidation]);
 
     /**
-     * Procesar usuario de Firebase después del login
+     * Validar si el usuario existe en nuestra base de datos usando /usuarios/validate
      */
-    const processFirebaseUser = async (firebaseUser: User) => {
+    const validateUserInDB = useCallback(async (token: string) => {
+        const cacheKey = `validate_user_${token.slice(-10)}`; // Últimos 10 chars como key
+
+        // 🔍 Verificar caché primero
+        const cached = getCachedValidation(cacheKey);
+        if (cached !== null) {
+            return cached;
+        }
+
+        try {
+            logger.log("🔍 Validando usuario en BD con /usuarios/validate...");
+
+            const response = await validateUser(token);
+
+            logger.log("📥 Respuesta de validateUser:", {
+                status: response.status,
+                ok: response.ok,
+                data: response.data
+            });
+
+            let result;
+
+            if (response.ok) {
+                const data = response.data;
+
+                if (data === true || (typeof data === 'object' && data.exists === true)) {
+                    logger.log("✅ Usuario existe en BD - AHORA VALIDAR ROLES");
+
+                    // 🎯 VALIDAR ROLES con los endpoints correctos
+                    const roleValidation = await validateUserRole(token);
+
+                    if (roleValidation) {
+                        logger.log(`✅ Rol validado correctamente: ${roleValidation}`);
+
+                        // Obtener perfil completo
+                        const profileResponse = await getUserProfile(token);
+                        const profile = profileResponse.ok ? profileResponse.data : null;
+
+                        result = { exists: true, role: roleValidation, profile };
+                    } else {
+                        logger.log("❌ Error validando rol del usuario");
+                        result = { exists: false, role: null, profile: null };
+                    }
+                } else {
+                    logger.log("❌ Usuario no existe en BD - NECESITA ONBOARDING");
+                    result = { exists: false, role: null, profile: null };
+                }
+            } else {
+                logger.log("❌ Error en API validate - NECESITA ONBOARDING");
+                result = { exists: false, role: null, profile: null };
+            }
+
+            // 💾 Guardar en caché
+            setCachedValidation(cacheKey, result);
+            return result;
+
+        } catch (error) {
+            logger.error("❌ Error validando usuario:", error);
+            const result = { exists: false, role: null, profile: null };
+            setCachedValidation(cacheKey, result);
+            return result;
+        }
+    }, [getCachedValidation, setCachedValidation, validateUserRole]);
+
+    /**
+     * Procesar usuario de Firebase después del login (CON PROTECCIÓN ANTI-DUPLICADOS MEJORADA)
+     */
+    const processFirebaseUser = useCallback(async (firebaseUser: User) => {
+        const userEmail = firebaseUser.email || '';
+
+        // 🛡️ PROTECCIÓN ANTI-DUPLICADOS CON useRef (PERSISTE ENTRE RENDERS)
+        if (processingUsersRef.current.has(userEmail)) {
+            logger.log("⏭️ Usuario ya está siendo procesado, saltando...");
+            return;
+        }
+
+        // Marcar como en proceso
+        processingUsersRef.current.add(userEmail);
+
         try {
             logger.log("🔄 Procesando usuario de Firebase:", firebaseUser.email);
 
@@ -171,11 +238,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const token = await firebaseUser.getIdToken();
             logger.log("🔑 Token obtenido de Firebase");
 
-            // 3. Validar en BD
+            // 3. Validar en BD (CON CACHÉ)
             logger.log("🔍 Consultando usuario en base de datos...");
             const validation = await validateUserInDB(token);
 
-            // 🔍 DEBUG EXTENDIDO
             logger.log("🎯 Resultado de validación:", {
                 exists: validation.exists,
                 role: validation.role,
@@ -187,21 +253,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 logger.log("✅ Usuario completamente autenticado");
                 logger.log(`👤 Rol FINAL: ${validation.role}`);
 
-                // Guardar en storage
-                authCookies.setAuthData({
-                    token,
-                    role: validation.role as 'cliente' | 'encargado',
-                    profile: validation.profile,
-                    userEmail: firebaseUser.email || ''
-                });
-
-                // 🔍 VERIFICAR QUE SE GUARDÓ CORRECTAMENTE
-                const savedData = authCookies.getAuthData();
-                logger.log("🔍 Datos guardados en cookies:", {
-                    role: savedData.role,
-                    userEmail: savedData.userEmail,
-                    hasProfile: !!savedData.profile
-                });
+                // Guardar en sessionStorage
+                sessionStorage.setItem('auth_token', token);
+                sessionStorage.setItem('auth_role', validation.role);
+                sessionStorage.setItem('auth_profile', JSON.stringify(validation.profile));
+                sessionStorage.setItem('auth_userEmail', firebaseUser.email || '');
 
                 store.setState({
                     type: 'AUTHENTICATED',
@@ -209,13 +265,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     token,
                     role: validation.role as 'cliente' | 'encargado',
                     profile: validation.profile
-                });
-
-                // 🔍 VERIFICAR ESTADO DEL STORE
-                logger.log("🔍 Estado final del store:", {
-                    isAuthenticated: store.isAuthenticated(),
-                    role: store.getRole(),
-                    needsOnboarding: store.needsOnboarding()
                 });
 
             } else {
@@ -238,8 +287,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
             logger.error("❌ Error procesando usuario:", error);
             store.setState({ type: 'UNAUTHENTICATED' });
+        } finally {
+            // Limpiar flag de procesamiento después de un tiempo
+            setTimeout(() => {
+                processingUsersRef.current.delete(userEmail);
+            }, 3000);
         }
-    };
+    }, [store, validateUserInDB]);
 
     // ============================================================================
     // MÉTODOS PÚBLICOS
@@ -251,6 +305,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             await processFirebaseUser(userCredential.user);
+
+            // 🆕 LLAMAR A countLogin SOLO SI EL LOGIN FUE EXITOSO
+            const currentToken = store.getToken();
+            if (currentToken && store.isAuthenticated()) {
+                try {
+                    logger.log("📊 Contando login exitoso...");
+                    await countLogin(currentToken);
+                    logger.log("✅ Login contabilizado correctamente");
+                } catch (error) {
+                    logger.error("❌ Error contabilizando login:", error);
+                    // No fallar el login por esto, solo loggear
+                }
+            }
 
             return true;
         } catch (error: any) {
@@ -270,12 +337,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             // Marcar como Google user
             authCookies.setAuthData({
-                token: '', // Se actualizará en processFirebaseUser
+                token: '',
                 isGoogleUser: true,
                 userEmail: result.user.email || ''
             });
 
             await processFirebaseUser(result.user);
+
+            // 🆕 LLAMAR A countLogin SOLO SI EL LOGIN FUE EXITOSO
+            const currentToken = store.getToken();
+            if (currentToken && store.isAuthenticated()) {
+                try {
+                    logger.log("📊 Contando login con Google exitoso...");
+                    await countLogin(currentToken);
+                    logger.log("✅ Login con Google contabilizado correctamente");
+                } catch (error) {
+                    logger.error("❌ Error contabilizando login con Google:", error);
+                    // No fallar el login por esto, solo loggear
+                }
+            }
 
             return true;
         } catch (error: any) {
@@ -289,29 +369,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const toastId = toast.loading("Cerrando sesión...");
             logger.log("🚪 Cerrando sesión");
 
-            // 1. Limpiamos todo
+            // 1. Limpiar caché y flags
+            validationCacheRef.current.clear();
+            processingUsersRef.current.clear();
+
+            // 2. Limpiamos todo
             await signOut(auth);
             authCookies.clearAuth();
             store.reset();
 
-            // 2. Mostramos el toast de éxito
             toast.success("Cierre de sesión exitoso", { id: toastId });
 
-            // 3. Esperamos un poco para que el usuario lo vea
             setTimeout(() => {
                 router.push("/login");
-            }, 2000); // ⏱️ Podés ajustar este delay si hace falta
+            }, 2000);
 
         } catch (error) {
             logger.error("❌ Error en logout:", error);
 
-            // 4. Siempre limpiamos aunque haya error
+            // Siempre limpiamos aunque haya error
+            validationCacheRef.current.clear();
+            processingUsersRef.current.clear();
             authCookies.clearAuth();
             store.reset();
 
             toast.error("Error al cerrar sesión. Redirigiendo...", { duration: 2000 });
 
-            // 5. Redirigimos igual (con pequeño delay opcional)
             setTimeout(() => {
                 router.push("/login");
             }, 1500);
@@ -321,6 +404,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const completeOnboarding = async () => {
         try {
             logger.log("🎉 Completando onboarding");
+
+            // Limpiar caché para forzar nueva validación
+            validationCacheRef.current.clear();
+            processingUsersRef.current.clear();
 
             const user = store.getUser();
             if (user) {
@@ -348,7 +435,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // ============================================================================
-    // EFFECTS
+    // EFFECTS (MEJORADOS CON useCallback)
     // ============================================================================
 
     // Cargar datos iniciales desde storage
@@ -361,13 +448,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 if (savedData.token) {
                     if (savedData.role && savedData.profile) {
-                        // Datos completos - usuario autenticado
                         logger.log("✅ Datos completos encontrados en storage");
-                        // No seteamos el estado aún, esperamos a onAuthStateChanged
                     } else {
-                        // Solo token - usuario en onboarding
                         logger.log("🔄 Token encontrado - usuario en onboarding");
-                        // No seteamos el estado aún, esperamos a onAuthStateChanged
                     }
                 } else {
                     logger.log("❌ No hay datos en storage");
@@ -383,9 +466,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
 
         loadInitialData();
-    }, []);
+    }, []); // ← ARREGLADO: Sin dependencias para evitar loop
 
-
+    // 🆕 MEJORADO: onAuthStateChanged con mejor lógica de duplicados
     useEffect(() => {
         if (!store.hasLoadedFromStorage) {
             return;
@@ -397,17 +480,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             logger.log("🔍 onAuthStateChanged:", firebaseUser?.email || 'null');
 
             if (firebaseUser) {
-                // Verificar si ya tenemos datos válidos para este usuario
                 const savedData = authCookies.getAuthData();
-                const isLoadingFromExistingData =
-                    savedData.userEmail === firebaseUser.email &&
-                    (store.isAuthenticated() || store.needsOnboarding());
+                const userEmail = firebaseUser.email || '';
 
-                if (!isLoadingFromExistingData) {
-                    // Procesar usuario si no tenemos datos válidos
-                    await processFirebaseUser(firebaseUser);
-                } else {
-                    // Restaurar estado desde storage
+                // 🔍 VERIFICAR SI YA TENEMOS ESTADO VÁLIDO PARA ESTE USUARIO
+                const hasValidState =
+                    savedData.userEmail === userEmail &&
+                    (store.isAuthenticated() || store.needsOnboarding() || store.emailNotVerified());
+
+                // 🔍 VERIFICAR SI YA ESTÁ SIENDO PROCESADO
+                const isBeingProcessed = processingUsersRef.current.has(userEmail);
+
+                if (hasValidState && !isBeingProcessed) {
+                    logger.log("✅ Usuario ya tiene estado válido, restaurando desde storage...");
+
+                    // Restaurar estado desde storage sin hacer nuevas llamadas
                     if (savedData.role && savedData.profile && savedData.token) {
                         store.setState({
                             type: 'AUTHENTICATED',
@@ -423,17 +510,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                             token: savedData.token
                         });
                     }
+                } else if (!isBeingProcessed) {
+                    logger.log("🔄 Procesando usuario nuevo o estado inválido...");
+                    await processFirebaseUser(firebaseUser);
+                } else {
+                    logger.log("⏳ Usuario ya está siendo procesado, esperando...");
                 }
             } else {
-                // Usuario no autenticado
                 logger.log("❌ Usuario no autenticado en Firebase");
+                validationCacheRef.current.clear(); // Limpiar caché
+                processingUsersRef.current.clear(); // Limpiar flags
                 authCookies.clearAuth();
                 store.setState({ type: 'UNAUTHENTICATED' });
             }
         });
 
         return () => unsubscribe();
-    }, [store.hasLoadedFromStorage]);
+    }, [store.hasLoadedFromStorage]); // ← ARREGLADO: Solo dependencia específica
 
     // ============================================================================
     // CONTEXT VALUE

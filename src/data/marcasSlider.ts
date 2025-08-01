@@ -1,80 +1,68 @@
-export interface Marca {
-    id: number;
-    nombre: string;
-    logo: string;
-    color: string;
-}
+import { Sucursal } from "@/types/sucursal";
 
-export const marcasReales: Marca[] = [
-    {
-        id: 3,
-        nombre: "Luco",
-        logo: "/logos/logo-luco.svg",
-        color: "#5f27cd"
-    },
-    {
-        id: 1,
-        nombre: "Bakeria",
-        logo: "/logos/logo-bakeria.svg",
-        color: "#44407a"
-    },
-    {
-        id: 2,
-        nombre: "Chez",
-        logo: "/logos/logo-chez.svg",
-        color: "#ff6b35"
-    },
-];
-
-// 🚀 FUTURO: Cuando tengamos logos subidos, usar esta función
-/*
-export const getMarcasFromAPI = (sucursales: Sucursal[]): Marca[] => {
-    return sucursales
-        .filter(sucursal => sucursal.suc_activo === 1 && sucursal.suc_url_foto)
-        .map(sucursal => ({
-            id: sucursal.suc_id,
-            nombre: sucursal.suc_nom,
-            logo: sucursal.suc_url_foto,
-            color: sucursal.suc_color || "#44407a"
-        }));
-};
-
-// O usando negocios:
-export const getMarcasFromNegocios = (negocios: Negocio[]): Marca[] => {
-    return negocios
-        .filter(negocio => negocio.neg_activo === 1 && negocio.neg_url_foto)
-        .map(negocio => ({
-            id: negocio.neg_id,
-            nombre: negocio.neg_nom,
-            logo: negocio.neg_url_foto,
-            color: negocio.neg_color || "#44407a"
-        }));
-};
-*/
-
-// 🔄 Función para crear loop infinito con los 3 logos reales
-export const getMarcasParaSlider = (): Marca[] => {
-    // Repetimos los 3 logos varias veces para crear efecto infinito sin huecos
-    const repeticiones = 8; // 3 logos x 8 = 24 elementos total
-    const marcasLoop: Marca[] = [];
-
-    for (let i = 0; i < repeticiones; i++) {
-        marcasLoop.push(...marcasReales);
+// Función para obtener sucursales para el slider
+export const getSucursalesParaSlider = (sucursales: Sucursal[] = []) => {
+    if (!sucursales || sucursales.length === 0) {
+        return [];
     }
 
-    return marcasLoop;
+    // Filtra las sucursales que tengan foto y estén activas
+    const sucursalesConFoto = sucursales.filter(
+        (sucursal) => sucursal.suc_url_foto
+    );
+
+    // Si no hay suficientes sucursales con foto, duplica el array para que el loop sea continuo
+    if (sucursalesConFoto.length < 3) {
+        return [...sucursalesConFoto, ...sucursalesConFoto, ...sucursalesConFoto];
+    }
+
+    // Si hay muchas sucursales, toma solo las primeras para evitar saturar la UI
+    const sucursalesLimitadas = sucursalesConFoto.slice(0, 12);
+
+    // Duplica el array para crear un loop infinito suave
+    return [...sucursalesLimitadas, ...sucursalesLimitadas];
 };
 
-// Función legacy - mantenemos por compatibilidad pero no la usamos
-export const getMarcasAleatorias = (cantidad: number = 8): Marca[] => {
-    return getMarcasParaSlider().slice(0, cantidad);
+// Función para rotar/mezclar las sucursales periódicamente
+export const mezclarSucursales = (sucursales: Sucursal[] = []) => {
+    if (!sucursales || sucursales.length === 0) {
+        return [];
+    }
+
+    const sucursalesCopia = [...sucursales];
+
+    // Algoritmo Fisher-Yates para mezclar el array
+    for (let i = sucursalesCopia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [sucursalesCopia[i], sucursalesCopia[j]] = [sucursalesCopia[j], sucursalesCopia[i]];
+    }
+
+    return getSucursalesParaSlider(sucursalesCopia);
 };
 
-// 📊 ESTADÍSTICAS
-export const getEstadisticasMarcas = () => {
-    return {
-        totalMarcasReales: marcasReales.length,
-        totalEnSlider: getMarcasParaSlider().length,
-        repeticionesPorLogo: Math.ceil(getMarcasParaSlider().length / marcasReales.length)
-    };
+// Hook personalizado para manejar el slider de sucursales
+import { useState, useEffect } from 'react';
+
+export const useSucursalesSlider = (sucursales: Sucursal[] = [], intervalTime = 15000) => {
+    const [sucursalesSlider, setSucursalesSlider] = useState<Sucursal[]>([]);
+
+    // Inicializa el slider cuando se cargan las sucursales
+    useEffect(() => {
+        if (sucursales && sucursales.length > 0) {
+            setSucursalesSlider(getSucursalesParaSlider(sucursales));
+        }
+    }, [sucursales]);
+
+    // Rota las sucursales periódicamente
+    useEffect(() => {
+        if (sucursales && sucursales.length > 0) {
+            const interval = setInterval(() => {
+                setSucursalesSlider(mezclarSucursales(sucursales));
+            }, intervalTime);
+
+            return () => clearInterval(interval);
+        }
+    }, [sucursales, intervalTime]);
+
+    return sucursalesSlider;
 };

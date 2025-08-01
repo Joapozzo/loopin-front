@@ -1,5 +1,5 @@
 import { ApiClient } from '@/api/api';
-import { GenerarCodigoResponse, GenerarCodigoRequest, CodigoCliente, ApiResponsePromocional, ApiResponsePuntos, CodigoPromocional, CodigoPuntos, CreateCuponPromocionResponse, CreateCuponPromocionRequest, UpdateEstadoRequest, UpdateEstadoResponse, CreateCuponPuntosRequest, CreateCuponPuntosResponse } from '@/types/codigos';
+import { GenerarCodigoResponse, GenerarCodigoRequest, CodigoCliente, ApiResponsePromocional, ApiResponsePuntos, CodigoPromocional, CodigoPuntos, CreateCuponPromocionResponse, CreateCuponPromocionRequest, UpdateEstadoRequest, UpdateEstadoResponse, CreateCuponPuntosRequest, CreateCuponPuntosResponse, ApiResponseCumpleanos, CuponCumpleanos } from '@/types/codigos';
 
 export class CuponService {
     private api: ApiClient;
@@ -52,6 +52,21 @@ export class CuponService {
      */
     async getCodigosPuntos(estado: number = 1): Promise<ApiResponsePuntos> {
         return this.api.get<ApiResponsePuntos>(`/codigos_puntos/encargado/${estado}`);
+    }
+
+    /**
+     * 🆕 Obtiene cupones de cumpleaños
+     */
+    async getCuponesCumpleanos(): Promise<ApiResponseCumpleanos> {
+        return this.api.get<ApiResponseCumpleanos>('/codigos_promocion/cumple');
+    }
+
+    /**
+     * 🆕 Obtiene solo el array de cupones de cumpleaños (método helper)
+     */
+    async getCuponesCumpleanosArray(): Promise<CuponCumpleanos[]> {
+        const response = await this.getCuponesCumpleanos();
+        return response.cupones_cumpleaños;
     }
 
     // Métodos específicos por estado - PROMOCIONALES
@@ -170,12 +185,11 @@ export class CuponService {
         }
     }
 
-
     /**
- * Obtiene códigos promocionales filtrados por negocio y sucursal
- * @param neg_id ID del negocio
- * @param suc_id ID de la sucursal
- */
+     * Obtiene códigos promocionales filtrados por negocio y sucursal
+     * @param neg_id ID del negocio
+     * @param suc_id ID de la sucursal
+     */
     async getCodigosPromocionPorNegocioSucursal(neg_id: number, suc_id: number): Promise<CodigoPromocional[]> {
         try {
             const response = await this.api.get<{ codigos_promocionales: CodigoPromocional[] }>(
@@ -186,32 +200,4 @@ export class CuponService {
             throw new Error(error.message || 'Error al obtener los códigos promocionales por negocio y sucursal');
         }
     }
-
-    /**
-     * Actualizar código promocional (POR IMPLEMENTAR)
-     */
-    // async updateCodigoPromocional(id: number, data: any): Promise<any> {
-    //     return this.api.put(`/codigos_promocion/${id}`, data);
-    // }
-
-    /**
-     * Eliminar código promocional (POR IMPLEMENTAR)
-     */
-    // async deleteCodigoPromocional(id: number): Promise<any> {
-    //     return this.api.delete(`/codigos_promocion/${id}`);
-    // }
-
-    /**
-     * Actualizar código de puntos (POR IMPLEMENTAR)
-     */
-    // async updateCodigoPuntos(id: number, data: any): Promise<any> {
-    //     return this.api.put(`/codigos_puntos/${id}`, data);
-    // }
-
-    /**
-     * Eliminar código de puntos (POR IMPLEMENTAR)
-     */
-    // async deleteCodigoPuntos(id: number, data: any): Promise<any> {
-    //     return this.api.delete(`/codigos_puntos/${id}`);
-    // }
 }

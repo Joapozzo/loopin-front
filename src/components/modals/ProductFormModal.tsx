@@ -13,7 +13,6 @@ import { useTiposProducto } from '@/hooks/useTiposProducto';
 import toast from 'react-hot-toast';
 import SpinnerLoader from '../ui/SpinerLoader';
 
-// ACTUALIZADO: Schema con lógica condicional para pro_activo
 const productoSchema = z.object({
     pro_nom: z
         .string()
@@ -22,7 +21,7 @@ const productoSchema = z.object({
 
     pro_puntos_canje: z
         .number()
-        .min(1, 'Los puntos deben ser mayor a 0')
+        .min(0, 'Los puntos deben ser mayor a 0')
         .max(99999, 'Los puntos no pueden exceder 99,999'),
 
     pro_cantidad_disp: z
@@ -171,8 +170,15 @@ export const ProductoFormModal: React.FC<ProductoFormModalProps> = ({
 
     const handleFormSubmit = async (data: FormData) => {
         try {
-            if (!data.pro_nom || !data.pro_puntos_canje || !data.pro_cantidad_disp || !data.cat_tip_id || !data.pro_tip_id || !data.pro_tyc) {
-                throw new Error('Faltan campos obligatorios');
+            if (
+                !data.pro_nom ||
+                !data.pro_puntos_canje ||
+                data.pro_cantidad_disp < 0 ||
+                !data.cat_tip_id ||
+                !data.pro_tip_id ||
+                !data.pro_tyc
+            ) {
+                throw new Error("Faltan campos obligatorios");
             }
 
             if (!isEditing) {

@@ -185,11 +185,11 @@ export default function RegisterStep1() {
         const toastId = toast.loading("Creando cuenta...");
 
         try {
-            console.log("🔥 INICIANDO CREACIÓN DE USUARIO");
+            logger.log("🔥 INICIANDO CREACIÓN DE USUARIO");
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
             const firebaseUser = userCredential.user;
 
-            console.log("🔥 USUARIO CREADO EXITOSAMENTE:", firebaseUser.email);
+            logger.log("🔥 USUARIO CREADO EXITOSAMENTE:", firebaseUser.email);
 
             // Enviar email de verificación
             await sendEmailVerification(firebaseUser, {
@@ -207,15 +207,15 @@ export default function RegisterStep1() {
             toast.success("Cuenta creada. Revisá tu email para verificar", { id: toastId });
 
         } catch (error: any) {
-            console.log("🔥 CATCH EJECUTADO - ERROR:", error);
-            console.log("🔥 ERROR CODE:", error.code);
+            logger.log("🔥 CATCH EJECUTADO - ERROR:", error);
+            logger.log("🔥 ERROR CODE:", error.code);
 
             toast.dismiss(toastId);
 
             // MANEJO ESPECÍFICO POR TIPO DE ERROR
             if (error.code === 'auth/email-already-in-use') {
                 // EMAIL YA REGISTRADO - NO HACER LOGIN TEMPORAL
-                console.log("📧 Email ya está registrado");
+                logger.log("📧 Email ya está registrado");
 
                 toast.error("Este email ya está registrado. Si es tuyo, inicia sesión o recupera tu contraseña.", {
                     duration: 5000
@@ -227,7 +227,7 @@ export default function RegisterStep1() {
 
             } else if (error.message && error.message.includes('BLOCKING_FUNCTION_ERROR_RESPONSE')) {
                 // ERROR DE CLOUD FUNCTION
-                console.log("🔒 Cloud Function bloqueó - usuario creado exitosamente");
+                logger.log("🔒 Cloud Function bloqueó - usuario creado exitosamente");
 
                 // Cerrar sesión para limpiar estado
                 await signOut(auth);
@@ -241,7 +241,7 @@ export default function RegisterStep1() {
 
             } else {
                 // OTROS ERRORES
-                console.log("❌ Otro tipo de error:", error.code);
+                logger.log("❌ Otro tipo de error:", error.code);
 
                 let errorMessage = "Error al crear la cuenta";
 

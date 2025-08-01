@@ -14,10 +14,13 @@ import { User, Store, Mail, PhoneCall, MapPin, Ticket, Settings, History, Trendi
 import { useUserProfile } from "@/hooks/userProfile";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import Button from "@/components/ui/buttons/Button";
+import { useModalStore } from "@/stores/useModalStore";
 
 export default function Page() {
     const { toggle } = useConfigStore();
     const { userData: usuario } = useUserProfile();
+    const openModal = useModalStore((state) => state.openModal);
 
     const {
         estadisticas,
@@ -30,6 +33,10 @@ export default function Page() {
     });
 
     const { logout } = useAuth();
+
+    const handleOpenCuponModal = () => {
+        openModal("cupon-puntos");
+    };
 
     if (!usuario) {
         return (
@@ -53,7 +60,11 @@ export default function Page() {
                         <BackButton />
                         <span className="flex items-center justify-center gap-2">
                             <Icon name="settings" onClick={toggle} />
-                            <Icon name="logout" onClick={logout} backgroundColor='var(--rose)'/>
+                            <Icon
+                                name="logout"
+                                onClick={logout}
+                                backgroundColor="var(--rose)"
+                            />
                         </span>
                     </div>
                     <div className="flex items-center flex-col gap-4 w-full">
@@ -63,15 +74,24 @@ export default function Page() {
                             className="h-20 w-20 rounded-full bg-[var(--violet-100)] object-cover p-2"
                         />
                         <div className="flex flex-col items-center justify-center">
-                            <h3 className="text-3xl font-medium text-white">{usuario.cli_nom} {usuario.cli_ape}</h3>
-                            {/* <p className="text-sm text-white/80">Nivel Básico</p> */}
+                            <h3 className="text-3xl font-medium text-white">
+                                {usuario.cli_nom} {usuario.cli_ape}
+                            </h3>
                         </div>
                         <div className="flex items-center gap-1">
                             <h4 className="text-4xl font-bold text-white">
-                                {loadingCliente ? '...' : totalCanjes}
+                                {loadingCliente ? "..." : totalCanjes}
                             </h4>
                             <p className="text-sm text-white/80">canjes totales</p>
                         </div>
+                        <Button
+                            variant="light"
+                            size="md"
+                            onClick={handleOpenCuponModal}
+                        >
+                            <Gift size={24} />
+                            Tengo un cupón!
+                        </Button>
                     </div>
                 </HeroLayout>
             </div>
@@ -112,13 +132,10 @@ export default function Page() {
                                 <h2 className="text-[var(--violet)] text-2xl font-medium mb-2">
                                     {usuario.cli_nom} {usuario.cli_ape}
                                 </h2>
-                                {/* <div className="flex items-center gap-3">
-                                    <div className="bg-white/70 rounded-lg px-4 py-2 border border-white/60">
-                                        <p className="text-[var(--violet)] font-semibold text-sm">
-                                            Nivel básico
-                                        </p>
-                                    </div>
-                                </div> */}
+                                <Button variant="light" size="md" className="" onClick={handleOpenCuponModal}>
+                                    <Gift size={24} />
+                                    Tengo un cupón!
+                                </Button>
                             </div>
                         </div>
                     </GradientCard>
@@ -139,16 +156,25 @@ export default function Page() {
                             </div>
                         ) : errorCliente ? (
                             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                                <p className="text-red-600 text-sm">Error al cargar el historial de canjes</p>
+                                <p className="text-red-600 text-sm">
+                                    Error al cargar el historial de canjes
+                                </p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="border text-[var(--violet-200)] rounded-lg p-4">
                                     <div className="flex items-center gap-3">
-                                        <TrendingUp size={24} className="text-[var(--violet-200)]" />
+                                        <TrendingUp
+                                            size={24}
+                                            className="text-[var(--violet-200)]"
+                                        />
                                         <div>
-                                            <p className="text-2xl font-bold text-[var(--violet-200)]">{totalCanjes}</p>
-                                            <p className="text-[var(--violet-200)] text-sm">Canjes Totales</p>
+                                            <p className="text-2xl font-bold text-[var(--violet-200)]">
+                                                {totalCanjes}
+                                            </p>
+                                            <p className="text-[var(--violet-200)] text-sm">
+                                                Canjes Totales
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -160,7 +186,9 @@ export default function Page() {
                                             <p className="text-2xl font-bold text-[var(--violet-200)]">
                                                 {estadisticas.canjesEncargado}
                                             </p>
-                                            <p className="text-[var(--violet-200)] text-sm">Por Puntos</p>
+                                            <p className="text-[var(--violet-200)] text-sm">
+                                                Por Puntos
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -172,7 +200,9 @@ export default function Page() {
                                             <p className="text-2xl font-bold text-[var(--violet-200)]">
                                                 {estadisticas.canjesPromocion}
                                             </p>
-                                            <p className="text-[var(--violet-200)] text-sm">Promocionales</p>
+                                            <p className="text-[var(--violet-200)] text-sm">
+                                                Promocionales
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -182,8 +212,12 @@ export default function Page() {
                                         <div className="flex items-center gap-3">
                                             <History size={24} className="text-[var(--violet)]" />
                                             <div>
-                                                <p className="text-[var(--violet)] font-semibold">Ver Historial</p>
-                                                <p className="text-[var(--violet)] text-sm opacity-75">Completo</p>
+                                                <p className="text-[var(--violet)] font-semibold">
+                                                    Ver Historial
+                                                </p>
+                                                <p className="text-[var(--violet)] text-sm opacity-75">
+                                                    Completo
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -195,8 +229,16 @@ export default function Page() {
                     {/* Acciones rápidas */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         <PerfilItemCard text="Tus cupones" icon={Ticket} url="/cupones" />
-                        <PerfilItemCard text="Credenciales" icon={User} url="/perfil/credenciales" />
-                        <PerfilItemCard text="Tus Comercios" icon={Store} url="/restaurantes" />
+                        <PerfilItemCard
+                            text="Credenciales"
+                            icon={User}
+                            url="/perfil/credenciales"
+                        />
+                        <PerfilItemCard
+                            text="Tus Comercios"
+                            icon={Store}
+                            url="/restaurantes"
+                        />
                     </div>
 
                     {/* Información personal */}
@@ -205,11 +247,31 @@ export default function Page() {
                             Información personal
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <PerfilStaticCard label="Nombre" value={usuario.cli_nom} icon={User} />
-                            <PerfilStaticCard label="Apellido" value={usuario.cli_ape} icon={User} />
-                            <PerfilStaticCard label="DNI" value={usuario.usu_dni} icon={WalletCards} />
-                            <PerfilStaticCard label="Email" value={usuario.usu_mail} icon={Mail} />
-                            <PerfilStaticCard label="Teléfono" value={usuario.usu_cel} icon={PhoneCall} />
+                            <PerfilStaticCard
+                                label="Nombre"
+                                value={usuario.cli_nom}
+                                icon={User}
+                            />
+                            <PerfilStaticCard
+                                label="Apellido"
+                                value={usuario.cli_ape}
+                                icon={User}
+                            />
+                            <PerfilStaticCard
+                                label="DNI"
+                                value={usuario.usu_dni}
+                                icon={WalletCards}
+                            />
+                            <PerfilStaticCard
+                                label="Email"
+                                value={usuario.usu_mail}
+                                icon={Mail}
+                            />
+                            <PerfilStaticCard
+                                label="Teléfono"
+                                value={usuario.usu_cel}
+                                icon={PhoneCall}
+                            />
                             {/* <PerfilStaticCard label="Ubicación" value={usuario.loc_nom} icon={MapPin} /> */}
                         </div>
                     </div>

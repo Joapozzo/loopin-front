@@ -3,6 +3,7 @@ import React from 'react';
 import { Package, Check } from 'lucide-react';
 import { Product } from '@/types/product';
 import Image from 'next/image';
+import { logger } from '@/utils/logger';
 
 export interface ProductoCardProps {
     producto: Product;
@@ -58,7 +59,7 @@ export const ProductoCard: React.FC<ProductoCardProps> = ({
 
                     {/* Overlay cuando está seleccionado */}
                     {isSelected && (
-                        <div className="absolute inset-0 bg-[var(--rose)] bg-opacity-20 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-[var(--rose)]/70 flex items-center justify-center">
                             <div className="bg-white rounded-full p-2 shadow-lg">
                                 <Check size={20} className="text-[var(--rose)]" />
                             </div>

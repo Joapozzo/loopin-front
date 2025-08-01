@@ -5,38 +5,15 @@ import Button from './ui/buttons/Button';
 import { ConfiguracionInfoCard } from '../components/ConfiguracionInfoCard';
 import { ConfiguracionPerfilCard } from '../components/ConfiguracionPerfilCard';
 import { ConfiguracionLogoCard } from '../components/ConfiguracionLogoCard';
-import { ConfiguracionGaleriaCard } from '../components/ConfiguracionGaleriaCard';
+import { useUserProfile } from '@/hooks/userProfile';
+import { useComercioData } from '@/hooks/useComercioEncargado';
+// import { ConfiguracionGaleriaCard } from '../components/ConfiguracionGaleriaCard';
 
 export const ConfiguracionTable: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
 
-    // Datos estáticos del restaurante
-    const restauranteData = {
-        suc_nom: "Loopin Sucursal",
-        suc_dir: "Dir",
-        suc_url_foto: "https://firebasestorage.googleapis.com/v0/b/loopinservices.firebasestorage.app/o/URL?alt=media",
-        suc_relacion_puntos: "1.00",
-        suc_color: "#FFFFF"
-    };
-
-    // Datos estáticos del encargado
-    const encargadoData = {
-        usu_username: "joapozzo",
-        usu_mail: "pozzojoa@gmail.com",
-        usu_cel: "351",
-        usu_dni: "4520",
-        cli_nom: "Joa",
-        cli_ape: "Pozzo",
-        cli_fec_nac: null,
-        loc_nom: "Córdoba Capital"
-    };
-
-    // Galería de imágenes (estática)
-    const galeria = [
-        "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400",
-        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
-        "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=400"
-    ];
+    const { userData, isLoading: profileLoading } = useUserProfile();
+    const { comercioData, loading: comercioDataLoading } = useComercioData();
 
     const handleEdit = () => {
         setIsEditing(true);
@@ -51,6 +28,14 @@ export const ConfiguracionTable: React.FC = () => {
         setIsEditing(false);
     };
 
+    if (profileLoading || comercioDataLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="text-gray-500">Cargando configuración...</div>
+            </div>
+        );
+    }
+    
     return (
         <div className="space-y-6">
             {/* Encabezado */}
@@ -98,19 +83,21 @@ export const ConfiguracionTable: React.FC = () => {
                 {/* Logo del Restaurante - Ocupa toda la fila */}
                 <div className="lg:col-span-2">
                     <ConfiguracionLogoCard
-                        logoUrl={restauranteData.suc_url_foto}
+                        logoUrl={comercioData?.suc_url_foto}
                     />
                 </div>
 
                 {/* Información del Restaurante */}
-                <ConfiguracionInfoCard
-                    data={restauranteData}
-                    isEditing={isEditing}
-                />
+                {comercioData && (
+                    <ConfiguracionInfoCard
+                        data={comercioData}
+                        isEditing={isEditing}
+                    />
+                )}
 
                 {/* Perfil del Encargado */}
                 <ConfiguracionPerfilCard
-                    data={encargadoData}
+                    data={userData}
                     isEditing={isEditing}
                 />
 

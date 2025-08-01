@@ -13,7 +13,7 @@ interface TarjetasProps {
 
 export default function CredencialRest({ tarjeta, cliente }: TarjetasProps) {
     const { tar_puntos_disponibles, tar_fecha_emision } = tarjeta;
-    // console.log(tarjeta);
+    // logger.log(tarjeta);
 
     if (!tarjeta || !cliente) {
         return (

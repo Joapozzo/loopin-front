@@ -1,8 +1,8 @@
 'use client';
 
-import { 
-    Home, User, Settings, Search, ArrowDownWideNarrow, Funnel, Bell, Plus, 
-    IdCard, Heart, Ticket, Check, LogOut, Minus, ArrowUpWideNarrow 
+import {
+    Home, User, Settings, Search, ArrowDownWideNarrow, Funnel, Bell, Plus,
+    IdCard, Heart, Ticket, Check, LogOut, Minus, ArrowUpWideNarrow, GiftIcon
 } from "lucide-react";
 import { ReactElement } from "react";
 
@@ -14,14 +14,14 @@ interface IconProps {
     filled?: boolean;
 }
 
-export default function Icon({ 
-    name, 
-    backgroundColor = "var(--color-principal)", 
+export default function Icon({
+    name,
+    backgroundColor = "var(--color-principal)",
     iconColor = "white",
-    onClick, 
-    filled 
+    onClick,
+    filled
 }: IconProps) {
-    
+
     const iconProps = {
         color: iconColor,
         strokeWidth: 2,
@@ -44,6 +44,8 @@ export default function Icon({
         logout: <LogOut {...iconProps} />,
         up: <ArrowUpWideNarrow {...iconProps} />,
         minus: <Minus {...iconProps} />,
+        gift: <GiftIcon {...iconProps} />,
+        idCard: <IdCard {...iconProps} />,
     };
 
     return (
@@ -66,7 +68,7 @@ export default function Icon({
             }}
             onClick={onClick}
         >
-            <span style={{ 
+            <span style={{
                 color: iconColor,
                 display: "flex",
                 alignItems: "center",

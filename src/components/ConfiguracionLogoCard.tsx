@@ -4,10 +4,9 @@ import Button from './ui/buttons/Button';
 import { useSucursales } from '@/hooks/useSucursales';
 import { useToast } from '@/hooks/useToast';
 import Image from 'next/image';
-import { getCleanUrl } from '@/data/utils';
 
 interface ConfiguracionLogoCardProps {
-    logoUrl: string;
+    logoUrl: string | undefined;
 }
 
 export const ConfiguracionLogoCard: React.FC<ConfiguracionLogoCardProps> = ({
@@ -15,7 +14,7 @@ export const ConfiguracionLogoCard: React.FC<ConfiguracionLogoCardProps> = ({
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
-    const { updateSucursalPhoto, refresh } = useSucursales({  });
+    const { updateSucursalPhoto, refresh } = useSucursales({});
     const { showToast } = useToast();
 
     const validateFile = (file: File): string | null => {
@@ -23,12 +22,12 @@ export const ConfiguracionLogoCard: React.FC<ConfiguracionLogoCardProps> = ({
         if (file.type !== 'image/png') {
             return 'Solo se permiten archivos PNG';
         }
-        
+
         // Máximo 2MB
         if (file.size > 2 * 1024 * 1024) {
             return 'El archivo debe ser menor a 2MB';
         }
-        
+
         return null;
     };
 
@@ -48,7 +47,7 @@ export const ConfiguracionLogoCard: React.FC<ConfiguracionLogoCardProps> = ({
         }
 
         setIsUploading(true);
-        
+
         try {
             const response = await updateSucursalPhoto(file);
             showToast(response.mensaje || 'Logo actualizado exitosamente', 'success');
@@ -67,9 +66,6 @@ export const ConfiguracionLogoCard: React.FC<ConfiguracionLogoCardProps> = ({
             }
         }
     };
-
-    console.log(getCleanUrl(logoUrl));
-    
 
     return (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -91,12 +87,12 @@ export const ConfiguracionLogoCard: React.FC<ConfiguracionLogoCardProps> = ({
                 {/* Lado izquierdo - Imagen y botón */}
                 <div className="space-y-4">
                     {/* Vista previa del logo actual */}
-                    <div className="w-full h-48 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                    <div className="w-full bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
                         {logoUrl ? (
                             <Image
-                                src={getCleanUrl(logoUrl)}
+                                src={logoUrl}
                                 alt="Logo del restaurante"
-                                className="w-full h-full object-cover rounded-lg"
+                                className="object-contain max-w-[100px] max-h-[120px]"
                                 width={120}
                                 height={40}
                             />
@@ -107,6 +103,7 @@ export const ConfiguracionLogoCard: React.FC<ConfiguracionLogoCardProps> = ({
                             </div>
                         )}
                     </div>
+
 
                     <Button
                         onClick={handleLogoChange}

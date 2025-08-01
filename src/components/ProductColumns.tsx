@@ -120,7 +120,7 @@ export const createProductoColumns = (
                 const cantidad = rawCantidad ? Number(rawCantidad) : 0;
 
                 // Debug: descomenta esta línea para ver qué valores recibes
-                // console.log('Stock para producto:', row.original.pro_id, 'Raw:', rawCantidad, 'Parsed:', cantidad);
+                // logger.log('Stock para producto:', row.original.pro_id, 'Raw:', rawCantidad, 'Parsed:', cantidad);
 
                 // Validar que sea un número válido
                 if (isNaN(cantidad)) {
